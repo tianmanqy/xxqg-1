@@ -90,6 +90,18 @@ func TestCalcAnswers(t *testing.T) {
 			[]*cdp.Node{{NodeValue: "线上线下同步"}},
 			nil,
 		},
+		{
+			[]*cdp.Node{
+				{NodeValue: "A"},
+				{NodeValue: "."},
+				{NodeValue: "正确说"},
+				{NodeValue: "B"},
+				{NodeValue: "."},
+				{NodeValue: "错误说"},
+			},
+			[]*cdp.Node{{NodeValue: "正确"}},
+			[]string{"正确说"},
+		},
 	}
 
 	for _, tc := range testcase {

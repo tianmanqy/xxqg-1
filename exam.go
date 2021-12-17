@@ -250,6 +250,14 @@ func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (re
 		for _, i := range answers {
 			log.Println("answers:", i.NodeValue)
 		}
+		if len(res) == 0 {
+			for _, i := range answers {
+				if strings.Contains(i.NodeValue, str) {
+					res = append(res, i.NodeValue)
+					return
+				}
+			}
+		}
 	case <-done:
 	}
 
