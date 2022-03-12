@@ -45,7 +45,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) error 
 			}
 			if err := chromedp.Run(
 				ctx,
-				chromedp.Click(`li[title="Next Page"]`),
+				chromedp.Click(`li[title="Next Page"][aria-disabled=false]`),
 				chromedp.WaitVisible("div.month"),
 				chromedp.Sleep(time.Second),
 				chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
