@@ -89,21 +89,21 @@ func main() {
 
 	start := time.Now()
 
-	if err := exam(ctx, practiceURL, "", practiceCount, practiceLimit); err != nil {
-		log.Print(err)
-	}
-	if err := exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit); err != nil {
-		log.Print(err)
-	}
-	if err := exam(ctx, paperURL, paperClass, paperCount, paperLimit); err != nil {
-		log.Print(err)
-	}
-	if err := artical(ctx); err != nil {
-		log.Print(err)
-	}
-	if err := video(ctx); err != nil {
-		log.Print(err)
-	}
+	checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
+	checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
+	checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
+	checkError("选读文章", artical(ctx))
+	checkError("视听学习", video(ctx))
 
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
+}
+
+func checkError(task string, err error) {
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Printf("%s: 任务超时或没有可用资源", task)
+		} else {
+			log.Printf("%s: %s", task, err)
+		}
+	}
 }

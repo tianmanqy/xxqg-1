@@ -10,7 +10,7 @@ import (
 )
 
 func listenFetch(ctx context.Context) error {
-	chromedp.ListenTarget(ctx, func(v interface{}) {
+	chromedp.ListenTarget(ctx, func(v any) {
 		switch ev := v.(type) {
 		case *fetch.EventRequestPaused:
 			go func() {
@@ -55,7 +55,7 @@ func listenPclog(ctx context.Context) <-chan struct{} {
 	}()
 
 	var id network.RequestID
-	chromedp.ListenTarget(ctx, func(v interface{}) {
+	chromedp.ListenTarget(ctx, func(v any) {
 		switch ev := v.(type) {
 		case *network.EventRequestWillBeSent:
 			if ev.Request.URL == pclogURL {
