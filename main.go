@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -89,11 +91,17 @@ func main() {
 
 	start := time.Now()
 
+	dividingLine()
 	checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
+	dividingLine()
 	checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
+	dividingLine()
 	checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
+	dividingLine()
 	checkError("选读文章", artical(ctx))
+	dividingLine()
 	checkError("视听学习", video(ctx))
+	dividingLine()
 
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
 }
@@ -106,4 +114,8 @@ func checkError(task string, err error) {
 			log.Printf("%s: %s", task, err)
 		}
 	}
+}
+
+func dividingLine() {
+	io.WriteString(log.Default().Writer(), strings.Repeat("=", 100)+"\r\n")
 }
