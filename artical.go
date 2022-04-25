@@ -11,8 +11,8 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func artical(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, articalLimit)
+func artical(ctx context.Context, n int) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
 	defer cancel()
 
 	if err := chromedp.Run(
@@ -54,7 +54,7 @@ func artical(ctx context.Context) error {
 	}
 
 	for i, node := range nodes {
-		if i+1 > articalCount {
+		if i+1 > n {
 			break
 		}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 
 const (
 	homeURL     = "https://www.xuexi.cn/"
+	pointsURL   = "https://pc.xuexi.cn/points/my-points.html"
+	pointsAPI   = "https://pc-proxy-api.xuexi.cn/api/score/days/listScoreProgress"
 	loginURL    = "https://pc.xuexi.cn/points/login.html"
 	practiceURL = "https://pc.xuexi.cn/points/exam-practice.html"
 	weeklyURL   = "https://pc.xuexi.cn/points/exam-weekly-list.html"
@@ -21,7 +24,8 @@ const (
 )
 
 const (
-	loginLimit  = time.Minute
+	loginLimit  = 2 * time.Minute
+	pointsLimit = 10 * time.Second
 	examLimit   = 15 * time.Second
 	browseLimit = 45 * time.Second
 )
@@ -45,12 +49,7 @@ const (
 
 const (
 	articalCount = 12
-	articalLimit = articalCount * browseLimit
-)
-
-const (
-	videoCount = 12
-	videoLimit = videoCount * browseLimit
+	videoCount   = 12
 )
 
 func main() {
@@ -89,21 +88,41 @@ func main() {
 	log.Print("登录成功")
 	cancel()
 
+	res := getPoints(ctx)
+	log.Print(res)
+	t := res.CreateTask()
+	if reflect.DeepEqual(t, task{}) {
+		log.Print("学习积分已达上限！")
+		return
+	}
+
 	start := time.Now()
 
 	dividingLine()
-	checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
-	dividingLine()
-	checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
-	dividingLine()
-	checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
-	dividingLine()
-	checkError("选读文章", artical(ctx))
-	dividingLine()
-	checkError("视听学习", video(ctx))
-	dividingLine()
+	for t.practice {
+		checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
+		dividingLine()
+		t = getPoints(ctx).CreateTask()
+	}
+	if t.weekly {
+		checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
+		dividingLine()
+	}
+	if t.paper {
+		checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
+		dividingLine()
+	}
+	if t.artical > 0 {
+		checkError("选读文章", artical(ctx, t.artical))
+		dividingLine()
+	}
+	if t.video > 0 {
+		checkError("视听学习", video(ctx, t.video))
+		dividingLine()
+	}
 
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
+	log.Print(getPoints(ctx))
 }
 
 func checkError(task string, err error) {

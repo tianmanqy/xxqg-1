@@ -8,8 +8,8 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func video(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, videoLimit)
+func video(ctx context.Context, n int) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
 	defer cancel()
 
 	var url string
@@ -44,7 +44,7 @@ func video(ctx context.Context) error {
 
 	done := listenPclog(ctx)
 	for i, v := range videos {
-		if i+1 > videoCount {
+		if i+1 > n {
 			break
 		}
 
