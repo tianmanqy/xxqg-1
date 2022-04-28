@@ -15,7 +15,7 @@ func video(ctx context.Context, n int) error {
 	var url string
 	if err := chromedp.Run(
 		ctx,
-		chromedp.AttributeValue(`(//a[@class="single text-ellipsis"])[8]`, "href", &url, nil),
+		chromedp.AttributeValue(`(//a[@class="single text-ellipsis" and text()="学习电视台"])`, "href", &url, nil),
 	); err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func video(ctx context.Context, n int) error {
 	if err := chromedp.Run(
 		ctx,
 		chromedp.Navigate(url),
-		chromedp.AttributeValue(`(//div[@class="textWrapper"])[2]`, "data-link-target", &album, nil),
+		chromedp.AttributeValue(`(//div[@class="textWrapper" and text()="学习专题报道"])`, "data-link-target", &album, nil),
 	); err != nil {
 		return err
 	}
