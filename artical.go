@@ -15,41 +15,40 @@ func artical(ctx context.Context, n int) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
 	defer cancel()
 
-	if err := chromedp.Run(
-		ctx,
-		chromedp.Navigate(homeURL),
-		chromedp.Click(`div[data-data-id="important-news-title"] div.extra>span`, chromedp.NodeVisible),
-	); err != nil {
-		return err
-	}
-
-	time.Sleep(time.Second)
-	targets, err := chromedp.Targets(ctx)
-	if err != nil {
+	if err := chromedp.Run(ctx, chromedp.Navigate(homeURL)); err != nil {
 		return err
 	}
 
 	var target *target.Info
-	for _, i := range targets {
-		if i.Type == "page" && i.URL != homeURL {
-			target = i
-			break
+	done := make(chan struct{}, 1)
+	go func() {
+		for {
+			chromedp.Run(ctx, chromedp.Click(`//span[text()="重要新闻"]`, chromedp.NodeVisible))
+			time.Sleep(time.Second)
+			targets, _ := chromedp.Targets(ctx)
+			for _, i := range targets {
+				if i.Type == "page" && i.URL != homeURL {
+					target = i
+					close(done)
+					return
+				}
+			}
 		}
-	}
-	if target == nil {
+	}()
+	select {
+	case <-ctx.Done():
 		return fmt.Errorf("no target found")
+	case <-done:
 	}
+
 	log.Println("[阅读] 重要新闻", target.URL)
+	log.Println("计划学习次数:", n)
 
 	navCtx, cancel := chromedp.NewContext(ctx, chromedp.WithTargetID(target.TargetID))
 	defer cancel()
 
 	var nodes []*cdp.Node
-	if err := chromedp.Run(
-		navCtx,
-		chromedp.WaitVisible("div.text-link-item-title"),
-		chromedp.Nodes("div.text-link-item-title div.text-wrap>span", &nodes),
-	); err != nil {
+	if err := chromedp.Run(navCtx, chromedp.Nodes("div.text-wrap>span", &nodes, chromedp.NodeVisible)); err != nil {
 		return err
 	}
 
@@ -59,10 +58,7 @@ func artical(ctx context.Context, n int) error {
 		}
 
 		start := time.Now()
-		if err := chromedp.Run(
-			navCtx,
-			chromedp.MouseClickNode(node),
-		); err != nil {
+		if err := chromedp.Run(navCtx, chromedp.MouseClickNode(node)); err != nil {
 			return err
 		}
 
@@ -79,10 +75,7 @@ func artical(ctx context.Context, n int) error {
 
 				done = listenPclog(articalCtx)
 				time.Sleep(time.Second)
-				if err := chromedp.Run(
-					articalCtx,
-					chromedp.Click("span.link-text", chromedp.NodeVisible),
-				); err != nil {
+				if err := chromedp.Run(articalCtx, chromedp.Click("span.link-text", chromedp.NodeVisible)); err != nil {
 					cancel()
 					return err
 				}

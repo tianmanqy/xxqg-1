@@ -41,15 +41,12 @@ func getPoints(ctx context.Context) (res pointsResult) {
 			}
 		case *network.EventLoadingFinished:
 			if ev.RequestID == id {
-				done <- struct{}{}
+				close(done)
 			}
 		}
 	})
 
-	if err := chromedp.Run(
-		ctx,
-		chromedp.Navigate(pointsURL),
-	); err != nil {
+	if err := chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
 		log.Print(err)
 		return
 	}

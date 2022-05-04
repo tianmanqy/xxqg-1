@@ -11,57 +11,54 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func exam(ctx context.Context, url, class string, n int, d time.Duration) error {
+func exam(ctx context.Context, url, class string, n int, d time.Duration) (err error) {
 	ctx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
 	ctx, cancel = context.WithTimeout(ctx, d)
 	defer cancel()
 
-	if err := listenFetch(ctx); err != nil {
-		return err
+	if err = listenFetch(ctx); err != nil {
+		return
 	}
 
-	if err := chromedp.Run(
-		ctx,
-		chromedp.Navigate(url),
-	); err != nil {
-		return err
+	if err = chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
+		return
 	}
 
 	if class != "" {
 		var buttons []*cdp.Node
-		if err := chromedp.Run(
+		if err = chromedp.Run(
 			ctx,
 			chromedp.WaitVisible("div.month"),
 			chromedp.Sleep(time.Second),
 			chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
 		); err != nil {
-			return err
+			return
 		}
 		for {
 			if len(buttons) != 0 {
 				break
 			}
-			if err := chromedp.Run(
+			if err = chromedp.Run(
 				ctx,
 				chromedp.Click(`li[title="Next Page"][aria-disabled=false]`),
 				chromedp.WaitVisible("div.month"),
 				chromedp.Sleep(time.Second),
 				chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
 			); err != nil {
-				return err
+				return
 			}
 		}
 
 		var title string
-		if err := chromedp.Run(
+		if err = chromedp.Run(
 			ctx,
 			chromedp.MouseClickNode(buttons[0]),
 			chromedp.WaitVisible("div.question"),
 			chromedp.Text("div.title", &title, chromedp.AtLeast(0)),
 		); err != nil {
-			return err
+			return
 		}
 
 		log.Println("[答题]", title)
@@ -73,31 +70,29 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) error 
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
 		var tips []*cdp.Node
-		if err := chromedp.Run(
+		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
 			chromedp.Nodes(`//div[@class="line-feed"]/font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
 			chromedp.Click("div.q-header>svg"),
 			chromedp.WaitNotVisible("div.line-feed"),
 		); err != nil {
-			return err
+			return
 		}
 		if len(tips) == 0 {
 			log.Print("没有提示答案")
 		}
 
 		var inputs []*cdp.Node
-		if err := chromedp.Run(
-			ctx,
-			chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
-		); err != nil {
-			return err
+		if err = chromedp.Run(ctx, chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0))); err != nil {
+			return
 		}
 
 		if len(inputs) == 0 {
-			answers, err := getAnswers(ctx, tips)
+			var answers []string
+			answers, err = getAnswers(ctx, tips)
 			if err != nil {
-				return err
+				return
 			}
 
 			if len(answers) != 0 {
@@ -106,39 +101,30 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) error 
 
 					log.Println("选择", i)
 
-					if err := chromedp.Run(
+					if err = chromedp.Run(
 						ctx,
-						chromedp.Click(fmt.Sprintf(`//div[contains(concat(@class," "),"q-answer ")][text()=%q]`, i)),
+						chromedp.Click(fmt.Sprintf("//div[%s][text()=%q]", classSelector("q-answer"), i)),
 					); err != nil {
-						return err
+						return
 					}
 				}
 			} else {
 				log.Print("未找到选择题答案")
-				if err := chromedp.Run(
-					ctx,
-					chromedp.Click(`//div[contains(concat(@class," "),"q-answer ")]`),
-				); err != nil {
-					return err
+				if err = chromedp.Run(ctx, chromedp.Click(fmt.Sprintf("//div[%s]", classSelector("q-answer")))); err != nil {
+					return
 				}
 			}
 		} else {
 			for i, input := range inputs {
 				if len(inputs) == len(tips) {
 					log.Println("输入", tips[i].NodeValue)
-					if err := chromedp.Run(
-						ctx,
-						chromedp.KeyEventNode(input, tips[i].NodeValue),
-					); err != nil {
-						return err
+					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, tips[i].NodeValue)); err != nil {
+						return
 					}
 				} else {
-					log.Print("输入 不知道")
-					if err := chromedp.Run(
-						ctx,
-						chromedp.KeyEventNode(input, "不知道"),
-					); err != nil {
-						return err
+					log.Println("输入", "不知道")
+					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, "不知道")); err != nil {
+						return
 					}
 				}
 			}
@@ -147,37 +133,28 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) error 
 		time.Sleep(time.Second)
 
 		if i == 10 {
-			if err := chromedp.Run(
-				ctx,
-				chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled),
-			); err != nil {
-				return err
+			if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled)); err != nil {
+				return
 			}
 		} else {
-			if err := chromedp.Run(
-				ctx,
-				chromedp.Click("div.action-row>button.next-btn", chromedp.NodeEnabled),
-			); err != nil {
-				return err
+			if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn", chromedp.NodeEnabled)); err != nil {
+				return
 			}
 
 			time.Sleep(2 * time.Second)
 
 			var nodes []*cdp.Node
-			if err := chromedp.Run(
+			if err = chromedp.Run(
 				ctx,
 				chromedp.Nodes("div.action-row>button.next-btn:enabled", &nodes, chromedp.AtLeast(0)),
 			); err != nil {
-				return err
+				return
 			}
 
 			if len(nodes) != 0 {
 				log.Print("答错 ×")
-				if err := chromedp.Run(
-					ctx,
-					chromedp.Click("div.action-row>button.next-btn"),
-				); err != nil {
-					return err
+				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn")); err != nil {
+					return
 				}
 			} else {
 				if class != "item" {
@@ -190,7 +167,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) error 
 	}
 
 	log.Printf("答题完毕！耗时：%s", time.Since(start))
-	return nil
+	return
 }
 
 func getAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
@@ -200,11 +177,7 @@ func getAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
 	var answers []*cdp.Node
 	if err := chromedp.Run(
 		ctx,
-		chromedp.Nodes(
-			`//div[contains(concat(@class," "),"q-answer ")]/text()`,
-			&answers,
-			chromedp.AtLeast(0),
-		),
+		chromedp.Nodes(fmt.Sprintf("//div[%s]/text()", classSelector("q-answer")), &answers, chromedp.AtLeast(0)),
 	); err != nil {
 		return nil, err
 	}
@@ -224,7 +197,7 @@ func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (re
 		for {
 			if str == "" {
 				close(done)
-				break
+				return
 			}
 			for _, i := range answers {
 				if strings.HasPrefix(str, i.NodeValue) {
@@ -262,4 +235,8 @@ func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (re
 	}
 
 	return
+}
+
+func classSelector(class string) string {
+	return fmt.Sprintf(`contains(concat(" ", normalize-space(@class), " "), " %s ")`, class)
 }

@@ -122,6 +122,8 @@ func main() {
 	}
 
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
+
+	time.Sleep(time.Second)
 	log.Print(getPoints(ctx))
 }
 

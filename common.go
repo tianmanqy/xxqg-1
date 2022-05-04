@@ -41,14 +41,11 @@ func listenPclog(ctx context.Context) <-chan struct{} {
 		for {
 			select {
 			case <-c:
-				if n == 1 {
+				if n%2 == 1 {
 					done <- struct{}{}
-					n = 0
-				} else {
-					n++
 				}
+				n++
 			case <-ctx.Done():
-				close(done)
 				return
 			}
 		}
