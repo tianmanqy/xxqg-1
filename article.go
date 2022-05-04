@@ -11,7 +11,7 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func artical(ctx context.Context, n int) error {
+func article(ctx context.Context, n int) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
 	defer cancel()
 
@@ -70,12 +70,12 @@ func artical(ctx context.Context, n int) error {
 		}
 		for _, t := range targets {
 			if t.Type == "page" && t.URL != homeURL && t.URL != target.URL {
-				var articalCtx context.Context
-				articalCtx, cancel = chromedp.NewContext(ctx, chromedp.WithTargetID(t.TargetID))
+				var articleCtx context.Context
+				articleCtx, cancel = chromedp.NewContext(ctx, chromedp.WithTargetID(t.TargetID))
 
-				done = listenPclog(articalCtx)
+				done = listenPclog(articleCtx)
 				time.Sleep(time.Second)
-				if err := chromedp.Run(articalCtx, chromedp.Click("span.link-text", chromedp.NodeVisible)); err != nil {
+				if err := chromedp.Run(articleCtx, chromedp.Click("span.link-text", chromedp.NodeVisible)); err != nil {
 					cancel()
 					return err
 				}

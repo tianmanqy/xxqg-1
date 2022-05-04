@@ -48,7 +48,7 @@ const (
 )
 
 const (
-	articalCount = 12
+	articleCount = 12
 	videoCount   = 12
 )
 
@@ -112,8 +112,8 @@ func main() {
 		checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
 		dividingLine()
 	}
-	if t.artical > 0 {
-		checkError("选读文章", artical(ctx, t.artical))
+	if t.article > 0 {
+		checkError("选读文章", article(ctx, t.article))
 		dividingLine()
 	}
 	if t.video > 0 {

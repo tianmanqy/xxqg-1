@@ -13,7 +13,7 @@ import (
 
 type task struct {
 	practice, weekly, paper bool
-	artical, video          int
+	article, video          int
 }
 
 type pointsResult struct {
@@ -78,7 +78,7 @@ func getPoints(ctx context.Context) (res pointsResult) {
 }
 
 func (res pointsResult) CreateTask() task {
-	t := task{true, true, true, articalCount, videoCount}
+	t := task{true, true, true, articleCount, videoCount}
 	for _, i := range res.Data.TaskProgress {
 		switch i.Title {
 		case "每日答题":
@@ -95,9 +95,9 @@ func (res pointsResult) CreateTask() task {
 			}
 		case "我要选读文章":
 			if i.CurrentScore < 6 {
-				t.artical = articalCount
+				t.article = articleCount
 			} else {
-				t.artical = articalCount - (i.CurrentScore-6)*2
+				t.article = articleCount - (i.CurrentScore-6)*2
 			}
 		case "视听学习时长":
 			t.video = videoCount - i.CurrentScore*2
