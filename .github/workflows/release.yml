@@ -54,6 +54,7 @@ jobs:
       - name: Build
         id: build
         run: |
+          go build -ldflags "-s -w"
           GOOS=windows go build -ldflags "-s -w"
           echo "::set-output name=date::$(TZ=PRC date +'%Y-%m-%d')"
 
@@ -65,4 +66,4 @@ jobs:
           tag_name: v1.0
           name: ${{ steps.build.outputs.date }}
           body: ${{ steps.build.outputs.date }}
-          files: xxqg.exe
+          files: xxqg*

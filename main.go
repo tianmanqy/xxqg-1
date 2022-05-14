@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chromedp/chromedp"
+	"github.com/vharitonsky/iniflags"
 )
 
 const (
@@ -25,6 +26,7 @@ const (
 
 const (
 	loginLimit  = 2 * time.Minute
+	tokenLimit  = 5 * time.Second
 	pointsLimit = 10 * time.Second
 	examLimit   = 15 * time.Second
 	browseLimit = 45 * time.Second
@@ -52,41 +54,25 @@ const (
 	videoCount   = 12
 )
 
+var token = flag.String("token", "", "token")
+
 func main() {
 	defer func() {
 		fmt.Println("Press enter key to exit . . .")
 		fmt.Scanln()
 	}()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
-	)
+	iniflags.SetConfigFile(tokenPath)
+	iniflags.SetAllowMissingConfigFile(true)
+	iniflags.SetAllowUnknownFlags(true)
+	iniflags.Parse()
 
-	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel = chromedp.NewContext(ctx)
-	defer cancel()
-
-	if err := listenFetch(ctx); err != nil {
+	ctx, cancel, err := login()
+	if err != nil {
 		log.Print(err)
 		return
 	}
-
-	loginCtx, cancel := context.WithTimeout(ctx, loginLimit)
-	log.Print("请先扫码登录")
-	if err := chromedp.Run(
-		loginCtx,
-		chromedp.Navigate(loginURL),
-		chromedp.WaitVisible("span.refresh"),
-		chromedp.EvaluateAsDevTools(`$("span.refresh").scrollIntoViewIfNeeded()`, nil),
-		chromedp.WaitVisible("span.logged-text"),
-	); err != nil {
-		log.Print(err)
-		return
-	}
-	log.Print("登录成功")
-	cancel()
+	defer cancel()
 
 	res := getPoints(ctx)
 	log.Print(res)

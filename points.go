@@ -18,6 +18,7 @@ type task struct {
 
 type pointsResult struct {
 	Data struct {
+		UserID       int
 		TotalScore   int
 		TaskProgress []struct {
 			Title        string
@@ -112,7 +113,7 @@ func (res pointsResult) String() string {
 		m[i.Title] = fmt.Sprintf("%d分/%d分", i.CurrentScore, i.DayMaxScore)
 	}
 
-	output := fmt.Sprintf("当前积分: %d\n", res.Data.TotalScore)
+	output := fmt.Sprintf("用户ID: %d\n当前积分: %d\n", res.Data.UserID, res.Data.TotalScore)
 	for _, i := range []string{"登录", "每日答题", "每周答题", "专项答题", "我要选读文章", "视听学习", "视听学习时长"} {
 		output += fmt.Sprintf("%s: %s\n", i, m[i])
 	}
