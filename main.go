@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chromedp/chromedp"
 	"github.com/vharitonsky/iniflags"
 )
 
@@ -27,7 +28,7 @@ const (
 const (
 	loginLimit  = 2 * time.Minute
 	tokenLimit  = 5 * time.Second
-	pointsLimit = 10 * time.Second
+	pointsLimit = 15 * time.Second
 	examLimit   = 15 * time.Second
 	browseLimit = 45 * time.Second
 )
@@ -35,26 +36,23 @@ const (
 const (
 	practiceCount = 5
 	practiceLimit = practiceCount * examLimit
-)
 
-const (
 	weeklyClass = "week"
 	weeklyCount = 5
 	weeklyLimit = weeklyCount * examLimit
-)
 
-const (
 	paperClass = "item"
 	paperCount = 10
 	paperLimit = paperCount * examLimit
-)
 
-const (
 	articleCount = 12
 	videoCount   = 12
 )
 
-var token = flag.String("token", "", "token")
+var (
+	token = flag.String("token", "", "token")
+	force = flag.Bool("force", false, "force")
+)
 
 func main() {
 	defer func() {
@@ -67,14 +65,32 @@ func main() {
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
-	ctx, cancel, err := login()
-	if err != nil {
-		log.Print(err)
-		return
-	}
+	ctx, cancel := chromedp.NewExecAllocator(
+		context.Background(),
+		append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("headless", false))...,
+	)
 	defer cancel()
 
-	res := getPoints(ctx)
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
+	if err := listenFetch(ctx); err != nil {
+		log.Println("Failed to listen fetch", err)
+		return
+	}
+
+	if err := login(ctx); err != nil {
+		log.Println("登录失败:", err)
+		return
+	}
+
+	res, err := getPoints(ctx)
+	if err != nil {
+		log.Println("获取学习积分失败:", err)
+		if !*force {
+			return
+		}
+	}
 	log.Print(res)
 	t := res.CreateTask()
 	if reflect.DeepEqual(t, task{}) {
@@ -88,7 +104,13 @@ func main() {
 	for t.practice {
 		checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
 		dividingLine()
-		t = getPoints(ctx).CreateTask()
+
+		res, err = getPoints(ctx)
+		if err != nil {
+			log.Println("获取学习积分失败:", err)
+			break
+		}
+		t = res.CreateTask()
 	}
 	if t.weekly {
 		checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
@@ -110,7 +132,13 @@ func main() {
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
 
 	time.Sleep(time.Second)
-	log.Print(getPoints(ctx))
+
+	res, err = getPoints(ctx)
+	if err != nil {
+		log.Println("获取学习积分失败:", err)
+	} else {
+		log.Print(res)
+	}
 }
 
 func checkError(task string, err error) {

@@ -10,8 +10,6 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36"
-
 var tokenPath string
 
 func init() {
@@ -23,31 +21,19 @@ func init() {
 	}
 }
 
-func login() (context.Context, context.CancelFunc, error) {
+func login(ctx context.Context) error {
 	if *token != "" {
-		ctx, cancel, err := loginWithToken()
-		if err != nil {
+		if err := loginWithToken(ctx); err != nil {
 			log.Printf("Token(%s)登录失败: %s", *token, err)
 		} else {
-			return ctx, cancel, nil
+			return nil
 		}
 	}
 
-	return loginWithQRCode()
+	return loginWithQRCode(ctx)
 }
 
-func loginWithQRCode() (context.Context, context.CancelFunc, error) {
-	ctx, cancel := chromedp.NewExecAllocator(
-		context.Background(),
-		append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("headless", false))...,
-	)
-	ctx, cancel = chromedp.NewContext(ctx)
-
-	if err := listenFetch(ctx); err != nil {
-		cancel()
-		return nil, nil, err
-	}
-
+func loginWithQRCode(ctx context.Context) error {
 	loginCtx, loginCancel := context.WithTimeout(ctx, loginLimit)
 	defer loginCancel()
 
@@ -60,28 +46,16 @@ func loginWithQRCode() (context.Context, context.CancelFunc, error) {
 		chromedp.WaitVisible("span.logged-text"),
 		getToken(),
 	); err != nil {
-		cancel()
-		return nil, nil, err
+		return err
 	}
 	log.Print("扫码登录成功")
 
 	os.WriteFile(tokenPath, []byte("token="+*token), 0644)
 
-	return ctx, cancel, nil
+	return nil
 }
 
-func loginWithToken() (context.Context, context.CancelFunc, error) {
-	ctx, cancel := chromedp.NewExecAllocator(
-		context.Background(),
-		append(chromedp.DefaultExecAllocatorOptions[:], chromedp.UserAgent(ua))...,
-	)
-	ctx, cancel = chromedp.NewContext(ctx)
-
-	if err := listenFetch(ctx); err != nil {
-		cancel()
-		return nil, nil, err
-	}
-
+func loginWithToken(ctx context.Context) error {
 	loginCtx, loginCancel := context.WithTimeout(ctx, tokenLimit)
 	defer loginCancel()
 
@@ -91,12 +65,11 @@ func loginWithToken() (context.Context, context.CancelFunc, error) {
 		chromedp.Navigate(loginURL),
 		chromedp.WaitVisible("span.logged-text"),
 	); err != nil {
-		cancel()
-		return nil, nil, err
+		return err
 	}
 	log.Print("使用Token登录成功")
 
-	return ctx, cancel, nil
+	return nil
 }
 
 func getToken() chromedp.Action {

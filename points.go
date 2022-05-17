@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/chromedp/cdproto/network"
@@ -28,7 +27,7 @@ type pointsResult struct {
 	}
 }
 
-func getPoints(ctx context.Context) (res pointsResult) {
+func getPoints(ctx context.Context) (res pointsResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, pointsLimit)
 	defer cancel()
 
@@ -47,33 +46,29 @@ func getPoints(ctx context.Context) (res pointsResult) {
 		}
 	})
 
-	if err := chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
-		log.Print(err)
+	if err = chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
 		return
 	}
 
 	select {
 	case <-ctx.Done():
-		log.Print(ctx.Err())
+		err = ctx.Err()
 		return
 	case <-done:
 	}
 
 	var b []byte
-	if err := chromedp.Run(
+	if err = chromedp.Run(
 		ctx,
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			b, err = network.GetResponseBody(id).Do(ctx)
 			return
 		}),
 	); err != nil {
-		log.Print(err)
 		return
 	}
 
-	if err := json.Unmarshal(b, &res); err != nil {
-		log.Print(err)
-	}
+	err = json.Unmarshal(b, &res)
 
 	return
 }

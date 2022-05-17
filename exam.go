@@ -157,7 +157,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 					return
 				}
 			} else {
-				if class != "item" {
+				if class != paperClass {
 					log.Print("答对 √")
 				}
 			}
@@ -182,10 +182,10 @@ func getAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
 		return nil, err
 	}
 
-	return calcAnswers(ctx, answers, tips)
+	return calcAnswers(ctx, answers, tips), nil
 }
 
-func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (res []string, err error) {
+func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (res []string) {
 	var str string
 	for _, i := range tips {
 		str += i.NodeValue

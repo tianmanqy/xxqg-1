@@ -106,11 +106,7 @@ func TestCalcAnswers(t *testing.T) {
 
 	for _, tc := range testcase {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		res, err := calcAnswers(ctx, tc.answers, tc.tips)
-		if err != nil {
-			t.Error(err)
-		}
-		if !reflect.DeepEqual(tc.res, res) {
+		if res := calcAnswers(ctx, tc.answers, tc.tips); !reflect.DeepEqual(tc.res, res) {
 			t.Errorf("expected %q; got %q", tc.res, res)
 		}
 		cancel()
