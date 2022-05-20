@@ -9,7 +9,7 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func listenFetch(ctx context.Context) error {
+func listenFetch(ctx context.Context, actions ...chromedp.Action) error {
 	chromedp.ListenTarget(ctx, func(v any) {
 		switch ev := v.(type) {
 		case *fetch.EventRequestPaused:
@@ -31,7 +31,7 @@ func listenFetch(ctx context.Context) error {
 		}
 	})
 
-	return chromedp.Run(ctx, fetch.Enable())
+	return chromedp.Run(ctx, append([]chromedp.Action{fetch.Enable()}, actions...)...)
 }
 
 func listenPclog(ctx context.Context) <-chan struct{} {

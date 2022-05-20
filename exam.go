@@ -12,15 +12,8 @@ import (
 )
 
 func exam(ctx context.Context, url, class string, n int, d time.Duration) (err error) {
-	ctx, cancel := chromedp.NewContext(ctx)
+	ctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, d)
-	defer cancel()
-
-	if err = listenFetch(ctx); err != nil {
-		return
-	}
 
 	if err = chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
 		return

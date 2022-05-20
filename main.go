@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/chromedp/chromedp"
 	"github.com/vharitonsky/iniflags"
 )
 
@@ -27,7 +28,7 @@ const (
 
 const (
 	loginLimit  = 2 * time.Minute
-	tokenLimit  = 5 * time.Second
+	tokenLimit  = time.Second
 	pointsLimit = 15 * time.Second
 	examLimit   = 15 * time.Second
 	browseLimit = 45 * time.Second
@@ -54,6 +55,17 @@ var (
 	force = flag.Bool("force", false, "force")
 )
 
+var tokenPath string
+
+func init() {
+	self, err := os.Executable()
+	if err != nil {
+		log.Println("Failed to get self path:", err)
+	} else {
+		tokenPath = filepath.Join(filepath.Dir(self), "xxqg.token")
+	}
+}
+
 func main() {
 	defer func() {
 		fmt.Println("Press enter key to exit . . .")
@@ -65,24 +77,12 @@ func main() {
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
-	ctx, cancel := chromedp.NewExecAllocator(
-		context.Background(),
-		append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("headless", false))...,
-	)
-	defer cancel()
-
-	ctx, cancel = chromedp.NewContext(ctx)
-	defer cancel()
-
-	if err := listenFetch(ctx); err != nil {
-		log.Println("Failed to listen fetch", err)
-		return
-	}
-
-	if err := login(ctx); err != nil {
+	ctx, cancel, err := login()
+	if err != nil {
 		log.Println("登录失败:", err)
 		return
 	}
+	defer cancel()
 
 	res, err := getPoints(ctx)
 	if err != nil {
