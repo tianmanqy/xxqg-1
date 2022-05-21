@@ -9,6 +9,8 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
+	"github.com/sergi/go-diff/diffmatchpatch"
+	"golang.org/x/exp/slices"
 )
 
 func exam(ctx context.Context, url, class string, n int, d time.Duration) (err error) {
@@ -83,7 +85,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 
 		if len(inputs) == 0 {
 			var answers []string
-			answers, err = getAnswers(ctx, tips)
+			answers, err = getChoiceQuestionAnswers(ctx, tips)
 			if err != nil {
 				return
 			}
@@ -108,6 +110,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 				}
 			}
 		} else {
+			log.Print("填空题")
 			for i, input := range inputs {
 				if len(inputs) == len(tips) {
 					log.Println("输入", tips[i].NodeValue)
@@ -163,36 +166,65 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 	return
 }
 
-func getAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
+func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var answers []*cdp.Node
+	var choices []*cdp.Node
 	if err := chromedp.Run(
 		ctx,
-		chromedp.Nodes(fmt.Sprintf("//div[%s]/text()", classSelector("q-answer")), &answers, chromedp.AtLeast(0)),
+		chromedp.Nodes(fmt.Sprintf("//div[%s]/text()", classSelector("q-answer")), &choices, chromedp.AtLeast(0)),
 	); err != nil {
 		return nil, err
 	}
 
-	return calcAnswers(ctx, answers, tips), nil
+	return calcChoiceQuestion(ctx, choices, tips), nil
 }
 
-func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (res []string) {
+func calcChoiceQuestion(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) []string {
+	if len(tips) == 1 {
+		log.Print("单选题")
+		return []string{calcSingleChoice(choices, tips[0].NodeValue)}
+	}
+
+	log.Print("多选题")
+	return calcMultipleChoice(ctx, choices, tips)
+}
+
+var diff = diffmatchpatch.New()
+
+func calcSingleChoice(choices []*cdp.Node, tip string) string {
+	type result struct {
+		text     string
+		distance int
+	}
+	var res []result
+	for _, i := range choices {
+		if i.NodeValue == tip {
+			return tip
+		}
+		diffs := diff.DiffMain(tip, i.NodeValue, false)
+		res = append(res, result{i.NodeValue, diff.DiffLevenshtein(diffs)})
+	}
+	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
+	return res[0].text
+}
+
+func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) (res []string) {
 	var str string
 	for _, i := range tips {
 		str += i.NodeValue
 	}
 	fullstr := str
 
-	done := make(chan struct{}, 1)
+	done := make(chan struct{})
 	go func() {
 		for {
 			if str == "" {
 				close(done)
 				return
 			}
-			for _, i := range answers {
+			for _, i := range choices {
 				if strings.HasPrefix(str, i.NodeValue) {
 					res = append(res, i.NodeValue)
 					str = strings.Replace(str, i.NodeValue, "", 1)
@@ -213,11 +245,11 @@ func calcAnswers(ctx context.Context, answers []*cdp.Node, tips []*cdp.Node) (re
 		for _, i := range tips {
 			log.Println("tips:", i.NodeValue)
 		}
-		for _, i := range answers {
+		for _, i := range choices {
 			log.Println("answers:", i.NodeValue)
 		}
 		if len(res) == 0 {
-			for _, i := range answers {
+			for _, i := range choices {
 				if strings.Contains(i.NodeValue, str) {
 					res = append(res, i.NodeValue)
 					return

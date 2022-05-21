@@ -20,7 +20,7 @@ func article(ctx context.Context, n int) error {
 	}
 
 	var target *target.Info
-	done := make(chan struct{}, 1)
+	done := make(chan struct{})
 	go func() {
 		for {
 			chromedp.Run(ctx, chromedp.Click(`//span[text()="重要新闻"]`, chromedp.NodeVisible))
