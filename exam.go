@@ -68,7 +68,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
-			chromedp.Nodes(`//div[@class="line-feed"]/font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
+			chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
 			chromedp.Click("div.q-header>svg"),
 			chromedp.WaitNotVisible("div.line-feed"),
 		); err != nil {
