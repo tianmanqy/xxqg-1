@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -118,8 +119,13 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 						return
 					}
 				} else {
-					log.Println("输入", "不知道")
-					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, "不知道")); err != nil {
+					var innerText string
+					if err = chromedp.Run(ctx, chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &innerText)); err != nil {
+						return
+					}
+					str := randomString(innerText, 2)
+					log.Println("输入", str)
+					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
 						return
 					}
 				}
@@ -264,4 +270,13 @@ func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.No
 
 func classSelector(class string) string {
 	return fmt.Sprintf(`contains(concat(" ", normalize-space(@class), " "), " %s ")`, class)
+}
+
+func randomString(str string, size int) string {
+	rs := []rune(str)
+	if length := len(rs); length > size {
+		n := rand.Intn(length - size)
+		return string(rs[n : n+size])
+	}
+	return "不知道"
 }

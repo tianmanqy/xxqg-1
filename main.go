@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -64,6 +65,7 @@ func init() {
 	} else {
 		tokenPath = filepath.Join(filepath.Dir(self), "xxqg.token")
 	}
+	rand.Seed(time.Now().UnixNano())
 }
 
 func main() {
