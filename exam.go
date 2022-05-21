@@ -255,12 +255,7 @@ func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.No
 			log.Println("answers:", i.NodeValue)
 		}
 		if len(res) == 0 {
-			for _, i := range choices {
-				if strings.Contains(i.NodeValue, str) {
-					res = append(res, i.NodeValue)
-					return
-				}
-			}
+			return []string{calcSingleChoice(choices, str)}
 		}
 	case <-done:
 	}
