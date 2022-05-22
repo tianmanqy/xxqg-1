@@ -40,7 +40,7 @@ func TestCalcSingleChoice(t *testing.T) {
 				{NodeValue: "错误"},
 			},
 			"线上线下同步",
-			"A",
+			"正确",
 		},
 		{
 			[]*cdp.Node{
@@ -121,7 +121,7 @@ func TestCalcMultipleChoice(t *testing.T) {
 
 	for _, tc := range testcase {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		if res := calcMultipleChoice(ctx, tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
+		if res, _ := calcMultipleChoice(ctx, tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
 			t.Errorf("expected %q; got %q", tc.res, res)
 		}
 		cancel()

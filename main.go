@@ -32,6 +32,7 @@ const (
 	tokenLimit  = time.Second
 	pointsLimit = 15 * time.Second
 	examLimit   = 15 * time.Second
+	choiceLimit = examLimit / 2
 	browseLimit = 45 * time.Second
 )
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"regexp"
 	"strings"
 	"time"
 
@@ -65,7 +66,7 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 	start := time.Now()
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
-		var tips []*cdp.Node
+		var choices, tips []*cdp.Node
 		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
@@ -84,9 +85,10 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 			return
 		}
 
+		var incalculable bool
 		if len(inputs) == 0 {
 			var answers []string
-			answers, err = getChoiceQuestionAnswers(ctx, tips)
+			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, tips)
 			if err != nil {
 				return
 			}
@@ -112,21 +114,32 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 			}
 		} else {
 			log.Print("填空题")
-			for i, input := range inputs {
-				if len(inputs) == len(tips) {
-					log.Println("输入", tips[i].NodeValue)
-					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, tips[i].NodeValue)); err != nil {
-						return
-					}
-				} else {
-					var innerText string
-					if err = chromedp.Run(ctx, chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &innerText)); err != nil {
-						return
-					}
-					str := randomString(innerText, 2)
-					log.Println("输入", str)
-					if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
-						return
+			if len(inputs) == 1 && len(tips) > 1 {
+				var str string
+				for _, i := range tips {
+					str += i.NodeValue
+				}
+				log.Println("合并输入", str)
+				if err = chromedp.Run(ctx, chromedp.KeyEventNode(inputs[0], str)); err != nil {
+					return
+				}
+			} else {
+				for i, input := range inputs {
+					if i < len(tips) {
+						log.Println("输入", tips[i].NodeValue)
+						if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, tips[i].NodeValue)); err != nil {
+							return
+						}
+					} else {
+						var str string
+						if err = chromedp.Run(ctx, chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &str)); err != nil {
+							return
+						}
+						str = randomString(str, rand.Intn(3)+2)
+						log.Println("随机输入", str)
+						if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
+							return
+						}
 					}
 				}
 			}
@@ -155,6 +168,10 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 
 			if len(nodes) != 0 {
 				log.Print("答错 ×")
+				if len(inputs) == 0 && !incalculable {
+					printTips(tips)
+					printChoices(choices)
+				}
 				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn")); err != nil {
 					return
 				}
@@ -172,25 +189,27 @@ func exam(ctx context.Context, url, class string, n int, d time.Duration) (err e
 	return
 }
 
-func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) (
+	choices []*cdp.Node, answers []string, incalculable bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, choiceLimit)
 	defer cancel()
 
-	var choices []*cdp.Node
-	if err := chromedp.Run(
+	if err = chromedp.Run(
 		ctx,
 		chromedp.Nodes(fmt.Sprintf("//div[%s]/text()", classSelector("q-answer")), &choices, chromedp.AtLeast(0)),
 	); err != nil {
-		return nil, err
+		return
 	}
 
-	return calcChoiceQuestion(ctx, choices, tips), nil
+	answers, incalculable = calcChoiceQuestion(ctx, choices, tips)
+
+	return
 }
 
-func calcChoiceQuestion(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) []string {
+func calcChoiceQuestion(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) ([]string, bool) {
 	if len(tips) == 1 {
 		log.Print("单选题")
-		return []string{calcSingleChoice(choices, tips[0].NodeValue)}
+		return []string{calcSingleChoice(choices, tips[0].NodeValue)}, false
 	}
 
 	log.Print("多选题")
@@ -209,14 +228,18 @@ func calcSingleChoice(choices []*cdp.Node, tip string) string {
 		if i.NodeValue == tip {
 			return tip
 		}
-		diffs := diff.DiffMain(tip, i.NodeValue, false)
-		res = append(res, result{i.NodeValue, diff.DiffLevenshtein(diffs)})
+		if !regexp.MustCompile(`^\s*[A-Z\.]\s*$`).MatchString(i.NodeValue) {
+			diffs := diff.DiffMain(tip, i.NodeValue, false)
+			res = append(res, result{i.NodeValue, diff.DiffLevenshtein(diffs)})
+		} else {
+			res = append(res, result{i.NodeValue, 100})
+		}
 	}
 	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
 	return res[0].text
 }
 
-func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) (res []string) {
+func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) (res []string, incalculable bool) {
 	var str string
 	for _, i := range tips {
 		str += i.NodeValue
@@ -247,15 +270,13 @@ func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.No
 
 	select {
 	case <-ctx.Done():
+		incalculable = true
 		log.Print("无法计算答案")
-		for _, i := range tips {
-			log.Println("tips:", i.NodeValue)
-		}
-		for _, i := range choices {
-			log.Println("answers:", i.NodeValue)
-		}
+		printTips(tips)
+		printChoices(choices)
 		if len(res) == 0 {
-			return []string{calcSingleChoice(choices, str)}
+			res = []string{calcSingleChoice(choices, str)}
+			return
 		}
 	case <-done:
 	}
@@ -271,7 +292,27 @@ func randomString(str string, size int) string {
 	rs := []rune(str)
 	if length := len(rs); length > size {
 		n := rand.Intn(length - size)
-		return string(rs[n : n+size])
+		str = string(rs[n : n+size])
 	}
-	return "不知道"
+	str = regexp.MustCompile("[。？！，、；：“”‘’'（）《》〈〉【】『』「」﹃﹄〔〕…—～﹏￥]").ReplaceAllString(str, "")
+	if str == "" {
+		return "不知道"
+	}
+	return str
+}
+
+func printChoices(nodes []*cdp.Node) {
+	var str string
+	for _, node := range nodes {
+		str += node.NodeValue
+	}
+	log.Println("选项:", str)
+}
+
+func printTips(nodes []*cdp.Node) {
+	var value []string
+	for i, node := range nodes {
+		value = append(value, fmt.Sprintf("%d. %s", i+1, node.NodeValue))
+	}
+	log.Println("提示:", strings.Join(value, " "))
 }
