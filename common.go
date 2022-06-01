@@ -8,6 +8,7 @@ import (
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"golang.org/x/exp/slices"
 )
 
 func listenFetch(ctx context.Context, actions ...chromedp.Action) error {
@@ -35,13 +36,13 @@ func listenFetch(ctx context.Context, actions ...chromedp.Action) error {
 	return chromedp.Run(ctx, append([]chromedp.Action{fetch.Enable()}, actions...)...)
 }
 
-func listenURL(ctx context.Context, url string) <-chan []byte {
+func listenURL(ctx context.Context, url string, method ...string) <-chan []byte {
 	c, done := make(chan []byte, 1), make(chan struct{}, 1)
 	var id network.RequestID
 	chromedp.ListenTarget(ctx, func(v any) {
 		switch ev := v.(type) {
 		case *network.EventRequestWillBeSent:
-			if strings.HasPrefix(ev.Request.URL, url) {
+			if strings.HasPrefix(ev.Request.URL, url) && slices.Contains(method, ev.Request.Method) {
 				id = ev.RequestID
 			}
 		case *network.EventLoadingFinished:
@@ -76,7 +77,7 @@ func listenURL(ctx context.Context, url string) <-chan []byte {
 }
 
 func listenPclog(ctx context.Context) <-chan struct{} {
-	done, c := make(chan struct{}, 1), listenURL(ctx, pclogURL)
+	done, c := make(chan struct{}, 1), listenURL(ctx, pclogURL, "POST")
 	var n int
 	go func() {
 		for {

@@ -74,7 +74,7 @@ func getPoints(ctx context.Context) (res pointsResult, err error) {
 }
 
 func (res pointsResult) CreateTask() task {
-	t := task{true, true, true, articleCount, videoCount}
+	t := task{true, true, true, articleNumber, videoNumber}
 	for _, i := range res.Data.TaskProgress {
 		switch i.Title {
 		case "每日答题":
@@ -91,12 +91,12 @@ func (res pointsResult) CreateTask() task {
 			}
 		case "我要选读文章":
 			if i.CurrentScore < 6 {
-				t.article = articleCount
+				t.article = articleNumber
 			} else {
-				t.article = articleCount - (i.CurrentScore-6)*2
+				t.article = articleNumber - (i.CurrentScore-6)*2
 			}
 		case "视听学习时长":
-			t.video = videoCount - i.CurrentScore*2
+			t.video = videoNumber - i.CurrentScore*2
 		}
 	}
 	return t

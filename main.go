@@ -24,6 +24,7 @@ const (
 	practiceURL = "https://pc.xuexi.cn/points/exam-practice.html"
 	weeklyURL   = "https://pc.xuexi.cn/points/exam-weekly-list.html"
 	paperURL    = "https://pc.xuexi.cn/points/exam-paper-list.html"
+	scoreAPI    = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
 	pclogURL    = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
 )
 
@@ -37,19 +38,11 @@ const (
 )
 
 const (
-	practiceCount = 5
-	practiceLimit = practiceCount * examLimit
-
 	weeklyClass = "week"
-	weeklyCount = 5
-	weeklyLimit = weeklyCount * examLimit
+	paperClass  = "item"
 
-	paperClass = "item"
-	paperCount = 10
-	paperLimit = paperCount * examLimit
-
-	articleCount = 12
-	videoCount   = 12
+	articleNumber = 12
+	videoNumber   = 12
 )
 
 var (
@@ -105,7 +98,7 @@ func main() {
 
 	dividingLine()
 	for t.practice {
-		checkError("每日答题", exam(ctx, practiceURL, "", practiceCount, practiceLimit))
+		checkError("每日答题", exam(ctx, practiceURL, ""))
 		dividingLine()
 
 		res, err = getPoints(ctx)
@@ -116,11 +109,11 @@ func main() {
 		t = res.CreateTask()
 	}
 	if t.weekly {
-		checkError("每周答题", exam(ctx, weeklyURL, weeklyClass, weeklyCount, weeklyLimit))
+		checkError("每周答题", exam(ctx, weeklyURL, weeklyClass))
 		dividingLine()
 	}
 	if t.paper {
-		checkError("专项答题", exam(ctx, paperURL, paperClass, paperCount, paperLimit))
+		checkError("专项答题", exam(ctx, paperURL, paperClass))
 		dividingLine()
 	}
 	if t.article > 0 {
