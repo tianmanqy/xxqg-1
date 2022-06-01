@@ -74,23 +74,19 @@ func exam(ctx context.Context, url, class string) (err error) {
 	start := time.Now()
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
-		var choices, tips []*cdp.Node
+		var tips, inputs, choices []*cdp.Node
 		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
 			chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
 			chromedp.Click("div.q-header>svg"),
 			chromedp.WaitNotVisible("div.line-feed"),
+			chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
 		); err != nil {
 			return
 		}
 		if len(tips) == 0 {
 			log.Print("没有提示答案")
-		}
-
-		var inputs []*cdp.Node
-		if err = chromedp.Run(ctx, chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0))); err != nil {
-			return
 		}
 
 		var incalculable bool

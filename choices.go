@@ -31,13 +31,16 @@ func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) (
 }
 
 func calcChoiceQuestion(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) ([]string, bool) {
-	if len(tips) == 1 {
+	switch len(tips) {
+	case 0:
+		return nil, false
+	case 1:
 		log.Print("单选题")
 		return []string{calcSingleChoice(choices, tips[0].NodeValue)}, false
+	default:
+		log.Print("多选题")
+		return calcMultipleChoice(ctx, choices, tips)
 	}
-
-	log.Print("多选题")
-	return calcMultipleChoice(ctx, choices, tips)
 }
 
 var diff = diffmatchpatch.New()
