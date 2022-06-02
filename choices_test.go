@@ -12,7 +12,7 @@ import (
 func TestCalcSingleChoice(t *testing.T) {
 	testcase := []struct {
 		choices []*cdp.Node
-		tip     string
+		tips    []*cdp.Node
 		res     string
 	}{
 		{
@@ -27,7 +27,7 @@ func TestCalcSingleChoice(t *testing.T) {
 				{NodeValue: "."},
 				{NodeValue: "线上线下同步"},
 			},
-			"线上线下同步",
+			[]*cdp.Node{{NodeValue: "线上线下同步"}},
 			"线上线下同步",
 		},
 		{
@@ -39,7 +39,7 @@ func TestCalcSingleChoice(t *testing.T) {
 				{NodeValue: "."},
 				{NodeValue: "错误"},
 			},
-			"线上线下同步",
+			[]*cdp.Node{{NodeValue: "线上线下同步"}},
 			"正确",
 		},
 		{
@@ -51,13 +51,13 @@ func TestCalcSingleChoice(t *testing.T) {
 				{NodeValue: "."},
 				{NodeValue: "错误说"},
 			},
-			"正确",
+			[]*cdp.Node{{NodeValue: "正确"}},
 			"正确说",
 		},
 	}
 
 	for _, tc := range testcase {
-		if res := calcSingleChoice(tc.choices, tc.tip); !reflect.DeepEqual(tc.res, res) {
+		if res := calcSingleChoice(tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
 			t.Errorf("expected %q; got %q", tc.res, res)
 		}
 	}
@@ -121,7 +121,7 @@ func TestCalcMultipleChoice(t *testing.T) {
 
 	for _, tc := range testcase {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		if res, _ := calcMultipleChoice(ctx, tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
+		if res, _ := calcMultipleChoice(ctx, len(tc.res), tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
 			t.Errorf("expected %q; got %q", tc.res, res)
 		}
 		cancel()

@@ -75,6 +75,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
 		var tips, inputs, choices []*cdp.Node
+		var body string
 		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
@@ -82,6 +83,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 			chromedp.Click("div.q-header>svg"),
 			chromedp.WaitNotVisible("div.line-feed"),
 			chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
+			chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &body),
 		); err != nil {
 			return
 		}
@@ -92,7 +94,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 		var incalculable bool
 		if len(inputs) == 0 {
 			var answers []string
-			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, tips)
+			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, body, tips)
 			if err != nil {
 				return
 			}
@@ -133,11 +135,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 							return
 						}
 					} else {
-						var str string
-						if err = chromedp.Run(ctx, chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &str)); err != nil {
-							return
-						}
-						str = randomString(str, rand.Intn(3)+2)
+						str := randomString(body, rand.Intn(3)+2)
 						log.Println("随机输入", str)
 						if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
 							return
@@ -168,6 +166,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 			if len(nodes) != 0 {
 				log.Print("答错 ×")
 				if len(inputs) == 0 && !incalculable {
+					log.Println("题目:", body)
 					printTips(tips)
 					printChoices(choices)
 				}
@@ -231,18 +230,31 @@ func randomString(str string, size int) string {
 	return str
 }
 
-func printChoices(nodes []*cdp.Node) {
-	var str string
-	for _, node := range nodes {
-		str += node.NodeValue
+func printChoices(choices []*cdp.Node) (output string) {
+	for i, choice := range choices {
+		switch i % 3 {
+		case 0:
+			if i != 0 {
+				output += " "
+			}
+			output += choice.NodeValue + "."
+		case 2:
+			output += choice.NodeValue
+		}
 	}
-	log.Println("选项:", str)
+	output = "选项: " + output
+
+	log.Print(output)
+	return
 }
 
-func printTips(nodes []*cdp.Node) {
+func printTips(tips []*cdp.Node) (output string) {
 	var value []string
-	for i, node := range nodes {
-		value = append(value, fmt.Sprintf("%d. %s", i+1, node.NodeValue))
+	for i, tip := range tips {
+		value = append(value, fmt.Sprintf("%d.%s", i+1, tip.NodeValue))
 	}
-	log.Println("提示:", strings.Join(value, " "))
+	output = "提示: " + strings.Join(value, " ")
+
+	log.Print(output)
+	return
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -13,8 +12,9 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) (
-	choices []*cdp.Node, answers []string, incalculable bool, err error) {
+func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node) (
+	choices []*cdp.Node, answers []string, incalculable bool, err error,
+) {
 	ctx, cancel := context.WithTimeout(ctx, choiceLimit)
 	defer cancel()
 
@@ -25,71 +25,83 @@ func getChoiceQuestionAnswers(ctx context.Context, tips []*cdp.Node) (
 		return
 	}
 
-	answers, incalculable = calcChoiceQuestion(ctx, choices, tips)
+	n := strings.Count(body, "（）")
+	switch n {
+	case 0:
+		log.Print("未知选题")
+	case 1:
+		log.Print("单选题")
+		answers = []string{calcSingleChoice(choices, tips)}
+		return
+	default:
+		log.Printf("多选题(%d)", n)
+	}
+
+	answers, incalculable = calcMultipleChoice(ctx, n, choices, tips)
+	if incalculable {
+		log.Print("无法计算答案")
+		log.Println("题目:", body)
+		printTips(tips)
+		printChoices(choices)
+	}
 
 	return
 }
 
-func calcChoiceQuestion(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) ([]string, bool) {
-	switch len(tips) {
-	case 0:
-		return nil, false
-	case 1:
-		log.Print("单选题")
-		return []string{calcSingleChoice(choices, tips[0].NodeValue)}, false
-	default:
-		log.Print("多选题")
-		return calcMultipleChoice(ctx, choices, tips)
-	}
-}
-
 var diff = diffmatchpatch.New()
 
-func calcSingleChoice(choices []*cdp.Node, tip string) string {
+func calcSingleChoice(choices, tips []*cdp.Node) string {
+	tip := fullTips(tips)
+
 	type result struct {
 		text     string
 		distance int
 	}
 	var res []result
-	for _, i := range choices {
-		if i.NodeValue == tip {
-			return tip
-		}
-		if !regexp.MustCompile(`^\s*[A-Z\.]\s*$`).MatchString(i.NodeValue) {
-			diffs := diff.DiffMain(tip, i.NodeValue, false)
-			res = append(res, result{i.NodeValue, diff.DiffLevenshtein(diffs)})
-		} else {
-			res = append(res, result{i.NodeValue, 100})
+	for i, choice := range choices {
+		if i%3 == 2 {
+			if choice.NodeValue == tip {
+				return tip
+			}
+			res = append(res, result{choice.NodeValue, diff.DiffLevenshtein(diff.DiffMain(tip, choice.NodeValue, false))})
 		}
 	}
 	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
+
 	return res[0].text
 }
 
-func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.Node) (res []string, incalculable bool) {
-	var str string
-	for _, i := range tips {
-		str += i.NodeValue
+func calcMultipleChoice(ctx context.Context, n int, choices, tips []*cdp.Node) (res []string, incalculable bool) {
+	if n == len(choices)/3 {
+		for i, choice := range choices {
+			if i%3 == 2 {
+				res = append(res, choice.NodeValue)
+			}
+		}
+		return
 	}
-	fullstr := str
 
+	tip := fullTips(tips)
+	str := tip
 	done := make(chan struct{})
 	go func() {
+		defer close(done)
+
 		for {
 			if str == "" {
-				close(done)
 				return
 			}
-			for _, i := range choices {
-				if strings.HasPrefix(str, i.NodeValue) {
-					res = append(res, i.NodeValue)
-					str = strings.Replace(str, i.NodeValue, "", 1)
-					continue
-				}
-				if fullstr == strings.ReplaceAll(i.NodeValue, " ", "") {
-					res = []string{i.NodeValue}
-					str = ""
-					break
+			for i, choice := range choices {
+				if i%3 == 2 {
+					if strings.HasPrefix(str, choice.NodeValue) {
+						res = append(res, choice.NodeValue)
+						str = strings.Replace(str, choice.NodeValue, "", 1)
+						continue
+					}
+					if strings.ReplaceAll(choice.NodeValue, " ", "") == tip {
+						res = []string{choice.NodeValue}
+						return
+					}
 				}
 			}
 		}
@@ -98,15 +110,18 @@ func calcMultipleChoice(ctx context.Context, choices []*cdp.Node, tips []*cdp.No
 	select {
 	case <-ctx.Done():
 		incalculable = true
-		log.Print("无法计算答案")
-		printTips(tips)
-		printChoices(choices)
 		if len(res) == 0 {
-			res = []string{calcSingleChoice(choices, str)}
-			return
+			res = []string{calcSingleChoice(choices, tips)}
 		}
 	case <-done:
 	}
 
+	return
+}
+
+func fullTips(tips []*cdp.Node) (str string) {
+	for _, i := range tips {
+		str += i.NodeValue
+	}
 	return
 }
