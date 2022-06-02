@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
@@ -114,27 +115,32 @@ func calcMultipleChoice(ctx context.Context, choices, tips []string) (answers, o
 		str = strings.Replace(str, i, "", 1)
 	}
 
+	var mu sync.Mutex
 	done := make(chan struct{})
 	go func() {
-		for {
-			if str == "" {
-				close(done)
-				return
-			}
-			for i, choice := range choices {
-				if !slices.Contains(selected, i) && strings.HasPrefix(str, choice) {
-					answers = append(answers, choice)
-					selected = append(selected, i)
-					str = strings.Replace(str, choice, "", 1)
-				}
-			}
+		select {
+		case <-ctx.Done():
+			mu.Lock()
+			defer mu.Unlock()
+			incalculable = true
+		case <-done:
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		incalculable = true
-	case <-done:
+	for {
+		mu.Lock()
+		if incalculable || str == "" {
+			close(done)
+			break
+		}
+		mu.Unlock()
+		for i, choice := range choices {
+			if !slices.Contains(selected, i) && strings.HasPrefix(str, choice) {
+				answers = append(answers, choice)
+				selected = append(selected, i)
+				str = strings.Replace(str, choice, "", 1)
+			}
+		}
 	}
 
 	for i, choice := range choices {
