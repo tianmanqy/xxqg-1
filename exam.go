@@ -170,9 +170,15 @@ func exam(ctx context.Context, url, class string) (err error) {
 					printTips(tips)
 					printChoices(choices)
 				}
-				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn")); err != nil {
+				var answer string
+				if err = chromedp.Run(
+					ctx,
+					chromedp.EvaluateAsDevTools(`$("div.answer").innerText`, &answer),
+					chromedp.Click("div.action-row>button.next-btn"),
+				); err != nil {
 					return
 				}
+				log.Print(answer)
 			} else {
 				if class != paperClass {
 					log.Print("答对 √")
