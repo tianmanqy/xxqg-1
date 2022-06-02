@@ -30,7 +30,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 
 	slice := convertNodes(choices, 3)
 	n := strings.Count(body, "（）")
-	switch header {
+	switch header[:9] {
 	case "单选题":
 		log.Print(header)
 		answers = []string{calcSingleChoice(ctx, slice, convertNodes(tips, 1))}
