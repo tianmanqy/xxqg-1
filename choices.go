@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -28,12 +30,18 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 		return
 	}
 
-	slice := convertNodes(choices, 3)
+	choicesList, tipsList := convertNodes(choices, 3), convertNodes(tips, 1)
+	if reflect.DeepEqual(choicesList, trueOrFalseChoices) {
+		log.Print("是非题")
+		answers = []string{calcTrueOrFalse(body, strings.Join(tipsList, ""))}
+		return
+	}
+
 	n := strings.Count(body, "（）")
 	switch header[:9] {
 	case "单选题":
-		log.Print(header)
-		answers = []string{calcSingleChoice(ctx, slice, convertNodes(tips, 1))}
+		log.Print("单选题")
+		answers = []string{calcSingleChoice(ctx, choicesList, tipsList)}
 		return
 	case "多选题":
 		log.Printf("多选题(%d)", n)
@@ -41,14 +49,14 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 		log.Printf("未知题型: %s(%d)", header, n)
 	}
 
-	if n == len(slice) {
-		for _, choice := range slice {
+	if n == len(choicesList) {
+		for _, choice := range choicesList {
 			answers = append(answers, choice)
 		}
 		return
 	}
 
-	answers, _, incalculable = calcMultipleChoice(ctx, slice, convertNodes(tips, 1))
+	answers, _, incalculable = calcMultipleChoice(ctx, choicesList, tipsList)
 	if incalculable {
 		log.Print("无法计算答案")
 		log.Println("题目:", body)
@@ -57,6 +65,22 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 	}
 
 	return
+}
+
+var (
+	trueOrFalseChoices = []string{"正确", "错误"}
+	trueOrFalseAnswer  = map[bool]string{true: "正确", false: "错误"}
+	negativeWords      = regexp.MustCompile(`不|没有|毫无|并非|免于`)
+)
+
+func calcTrueOrFalse(body, tip string) string {
+	if slices.Contains(trueOrFalseChoices, tip) {
+		return tip
+	}
+	if negativeWords.MatchString(body) {
+		return trueOrFalseAnswer[negativeWords.MatchString(tip)]
+	}
+	return trueOrFalseAnswer[!negativeWords.MatchString(tip)]
 }
 
 var diff = diffmatchpatch.New()
