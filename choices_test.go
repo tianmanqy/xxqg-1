@@ -5,6 +5,36 @@ import (
 	"testing"
 )
 
+func TestCalcTrueOrFalse(t *testing.T) {
+	testcase := []struct {
+		body string
+		tip  string
+		res  string
+	}{
+		{
+			"线上线下同步",
+			"线上线下同步",
+			"正确",
+		},
+		{
+			"是",
+			"不是",
+			"错误",
+		},
+		{
+			"不同",
+			"并非不同",
+			"错误",
+		},
+	}
+
+	for _, tc := range testcase {
+		if res := calcTrueOrFalse(tc.body, tc.tip); tc.res != res {
+			t.Errorf("expected %q; got %q", tc.res, res)
+		}
+	}
+}
+
 func TestCalcSingleChoice(t *testing.T) {
 	testcase := []struct {
 		choices []string
@@ -15,11 +45,6 @@ func TestCalcSingleChoice(t *testing.T) {
 			[]string{"线上", "线下", "线上线下同步"},
 			[]string{"线上线下同步"},
 			"线上线下同步",
-		},
-		{
-			[]string{"正确", "错误"},
-			[]string{"线上线下同步"},
-			"正确",
 		},
 		{
 			[]string{"正确说", "错误说"},
@@ -49,7 +74,7 @@ func TestCalcSingleChoice(t *testing.T) {
 	}
 
 	for _, tc := range testcase {
-		if res := calcSingleChoice(tc.choices, tc.tips); !reflect.DeepEqual(tc.res, res) {
+		if res := calcSingleChoice(tc.choices, tc.tips); tc.res != res {
 			t.Errorf("expected %q; got %q", tc.res, res)
 		}
 	}

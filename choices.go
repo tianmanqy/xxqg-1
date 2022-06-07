@@ -69,17 +69,16 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 var (
 	trueOrFalseChoices = []string{"正确", "错误"}
 	trueOrFalseAnswer  = map[bool]string{true: "正确", false: "错误"}
-	negativeWords      = regexp.MustCompile(`不|没有|毫无|并非|免于`)
+	negativeWords      = regexp.MustCompile(`不|无|没|非|免`)
 )
 
 func calcTrueOrFalse(body, tip string) string {
 	if slices.Contains(trueOrFalseChoices, tip) {
 		return tip
 	}
-	if negativeWords.MatchString(body) {
-		return trueOrFalseAnswer[negativeWords.MatchString(tip)]
-	}
-	return trueOrFalseAnswer[!negativeWords.MatchString(tip)]
+
+	wb, wt := negativeWords.FindAllString(body, -1), negativeWords.FindAllString(tip, -1)
+	return trueOrFalseAnswer[(len(wb)-len(wt))%2 == 0]
 }
 
 var diff = diffmatchpatch.New()
