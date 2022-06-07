@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
@@ -41,7 +40,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 	switch header[:9] {
 	case "单选题":
 		log.Print("单选题")
-		answers = []string{calcSingleChoice(ctx, choicesList, tipsList)}
+		answers = []string{calcSingleChoice(choicesList, tipsList)}
 		return
 	case "多选题":
 		log.Printf("多选题(%d)", n)
@@ -56,7 +55,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 		return
 	}
 
-	answers, _, incalculable = calcMultipleChoice(ctx, choicesList, tipsList)
+	answers, _, incalculable = calcMultipleChoice(choicesList, tipsList)
 	if incalculable {
 		log.Print("无法计算答案")
 		log.Println("题目:", body)
@@ -85,7 +84,7 @@ func calcTrueOrFalse(body, tip string) string {
 
 var diff = diffmatchpatch.New()
 
-func calcSingleChoice(ctx context.Context, choices, tips []string) string {
+func calcSingleChoice(choices, tips []string) string {
 	type result struct {
 		text     string
 		distance int
@@ -101,7 +100,7 @@ func calcSingleChoice(ctx context.Context, choices, tips []string) string {
 	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
 
 	if len(tips) > 1 {
-		answers, others, _ := calcMultipleChoice(ctx, choices, tips)
+		answers, others, _ := calcMultipleChoice(choices, tips)
 		if len(answers) > 1 && len(others) > 0 {
 			log.Print("选择未出现内容")
 			switch len(others) {
@@ -125,7 +124,7 @@ func calcSingleChoice(ctx context.Context, choices, tips []string) string {
 	return res[0].text
 }
 
-func calcMultipleChoice(ctx context.Context, choices, tips []string) (answers, others []string, incalculable bool) {
+func calcMultipleChoice(choices, tips []string) (answers, others []string, incalculable bool) {
 	var selected []int
 	for i, choice := range choices {
 		if slices.Contains(tips, choice) {
@@ -139,31 +138,11 @@ func calcMultipleChoice(ctx context.Context, choices, tips []string) (answers, o
 		str = strings.Replace(str, i, "", 1)
 	}
 
-	var mu sync.Mutex
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			mu.Lock()
-			defer mu.Unlock()
-			incalculable = true
-		case <-done:
-		}
-	}()
-
-	for {
-		mu.Lock()
-		if incalculable || str == "" {
-			close(done)
-			break
-		}
-		mu.Unlock()
-		for i, choice := range choices {
-			if !slices.Contains(selected, i) && strings.HasPrefix(str, choice) {
-				answers = append(answers, choice)
-				selected = append(selected, i)
-				str = strings.Replace(str, choice, "", 1)
-			}
+	for i, choice := range choices {
+		if !slices.Contains(selected, i) && strings.Contains(str, choice) {
+			answers = append(answers, choice)
+			selected = append(selected, i)
+			str = strings.Replace(str, choice, "", 1)
 		}
 	}
 
