@@ -75,10 +75,11 @@ func exam(ctx context.Context, url, class string) (err error) {
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
 		var tips, inputs, choices []*cdp.Node
-		var body string
+		var body, tip string
 		if err = chromedp.Run(
 			ctx,
 			chromedp.Click("span.tips", chromedp.NodeVisible),
+			chromedp.EvaluateAsDevTools(`$("div.line-feed").innerText`, &tip),
 			chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
 			chromedp.Click("div.q-header>svg"),
 			chromedp.WaitNotVisible("div.line-feed"),
@@ -91,10 +92,10 @@ func exam(ctx context.Context, url, class string) (err error) {
 			log.Print("没有提示答案")
 		}
 
+		var answers []string
 		var incalculable bool
 		if len(inputs) == 0 {
-			var answers []string
-			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, body, tips)
+			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, body, tip, tips)
 			if err != nil {
 				return
 			}
@@ -167,6 +168,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 				log.Print("答错 ×")
 				if len(inputs) == 0 && !incalculable {
 					log.Println("题目:", body)
+					log.Println("提示:", tip)
 					printTips(tips)
 					printChoices(choices)
 				}
@@ -259,7 +261,7 @@ func printTips(tips []*cdp.Node) (output string) {
 	for i, tip := range tips {
 		value = append(value, fmt.Sprintf("%d.%s", i+1, tip.NodeValue))
 	}
-	output = "提示: " + strings.Join(value, " ")
+	output = "提示项: " + strings.Join(value, " ")
 
 	log.Print(output)
 	return

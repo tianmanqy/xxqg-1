@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
@@ -14,13 +15,18 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+const (
+	trueStr  = "正确"
+	falseStr = "错误"
+)
+
 var (
-	trueOrFalseChoices = [][]string{{"正确", "错误"}, {"错误", "正确"}}
-	trueOrFalseAnswer  = map[bool]string{true: "正确", false: "错误"}
+	trueOrFalseChoices = [][]string{{trueStr, falseStr}, {falseStr, trueStr}}
+	trueOrFalseAnswer  = map[bool]string{true: trueStr, false: falseStr}
 	negativeWords      = regexp.MustCompile(`不|无|没|非|免`)
 )
 
-func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node) (
+func getChoiceQuestionAnswers(ctx context.Context, body, tip string, tips []*cdp.Node) (
 	choices []*cdp.Node, answers []string, incalculable bool, err error,
 ) {
 	ctx, cancel := context.WithTimeout(ctx, choiceLimit)
@@ -48,7 +54,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 	switch header[:9] {
 	case "单选题":
 		log.Print("单选题")
-		answers = []string{calcSingleChoice(choicesList, tipsList)}
+		answers = []string{calcSingleChoice(n, tip, choicesList, tipsList)}
 		return
 	case "多选题":
 		log.Printf("多选题(%d)", n)
@@ -63,10 +69,11 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 		return
 	}
 
-	answers, _, incalculable = calcMultipleChoice(choicesList, tipsList)
+	answers, _, incalculable = calcMultipleChoice(n, choicesList, tipsList)
 	if incalculable {
 		log.Print("无法计算答案")
 		log.Println("题目:", body)
+		log.Println("提示:", tip)
 		printTips(tips)
 		printChoices(choices)
 	}
@@ -75,8 +82,10 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 }
 
 func calcTrueOrFalse(body, tip string) string {
-	if slices.Contains(trueOrFalseChoices, tip) {
-		return tip
+	for _, i := range []string{trueStr, falseStr} {
+		if strings.Contains(tip, i) {
+			return i
+		}
 	}
 
 	wb, wt := negativeWords.FindAllString(body, -1), negativeWords.FindAllString(tip, -1)
@@ -85,7 +94,7 @@ func calcTrueOrFalse(body, tip string) string {
 
 var diff = diffmatchpatch.New()
 
-func calcSingleChoice(choices, tips []string) string {
+func calcSingleChoice(n int, tip string, choices, tips []string) string {
 	type result struct {
 		text     string
 		distance int
@@ -100,32 +109,16 @@ func calcSingleChoice(choices, tips []string) string {
 	}
 	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
 
-	if len(tips) > 1 {
-		answers, others, _ := calcMultipleChoice(choices, tips)
-		if len(answers) > 1 && len(others) > 0 {
-			log.Print("选择未出现内容")
-			switch len(others) {
-			case 1:
-				return others[0]
-			default:
-				var res []result
-				for _, answer := range answers {
-					str = strings.Replace(str, answer, "", 1)
-				}
-				for _, other := range others {
-					res = append(res, result{other, diff.DiffLevenshtein(diff.DiffMain(str, other, false))})
-				}
-				slices.SortStableFunc(res, func(a, b result) bool { return a.distance > b.distance })
-
-				return res[0].text
-			}
-		}
+	if !strings.Contains(tip, str) && len(tips) > n && len(choices) > 2 {
+		log.Print("选择未出现内容")
+		_, others, _ := calcMultipleChoice(len(choices)-1, choices, tips)
+		return others[0]
 	}
 
 	return res[0].text
 }
 
-func calcMultipleChoice(choices, tips []string) (answers, others []string, incalculable bool) {
+func calcMultipleChoice(n int, choices, tips []string) (answers, others []string, incalculable bool) {
 	var selected []int
 	for i, choice := range choices {
 		if slices.Contains(tips, choice) {
@@ -147,6 +140,33 @@ func calcMultipleChoice(choices, tips []string) (answers, others []string, incal
 		}
 	}
 
+	if n > 0 && len(answers) < n {
+		incalculable = true
+
+		type result struct {
+			index    int
+			text     string
+			distance int
+		}
+		var res []result
+		for i, choice := range choices {
+			if !slices.Contains(selected, i) {
+				res = append(
+					res,
+					result{i, choice, diff.DiffLevenshtein(diff.DiffMain(str, choice, false)) +
+						utf8.RuneCountInString(choice) -
+						utf8.RuneCountInString(str)},
+				)
+			}
+		}
+		slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
+
+		for i, n := 0, n-len(answers); i < n; i++ {
+			answers = append(answers, res[i].text)
+			selected = append(selected, res[i].index)
+		}
+	}
+
 	for i, choice := range choices {
 		if !slices.Contains(selected, i) {
 			others = append(others, choice)
@@ -156,11 +176,12 @@ func calcMultipleChoice(choices, tips []string) (answers, others []string, incal
 	return
 }
 
-func convertNodes(nodes []*cdp.Node, n int) (res []string) {
+func convertNodes(nodes []*cdp.Node, n int) []string {
+	var res []string
 	for i, node := range nodes {
-		if i%n == n-1 {
+		if i%n == n-1 && strings.TrimSpace(node.NodeValue) != "" {
 			res = append(res, node.NodeValue)
 		}
 	}
-	return
+	return slices.Compact(res)
 }
