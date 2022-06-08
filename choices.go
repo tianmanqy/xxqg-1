@@ -14,6 +14,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+var (
+	trueOrFalseChoices = [][]string{{"正确", "错误"}, {"错误", "正确"}}
+	trueOrFalseAnswer  = map[bool]string{true: "正确", false: "错误"}
+	negativeWords      = regexp.MustCompile(`不|无|没|非|免`)
+)
+
 func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node) (
 	choices []*cdp.Node, answers []string, incalculable bool, err error,
 ) {
@@ -30,10 +36,12 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 	}
 
 	choicesList, tipsList := convertNodes(choices, 3), convertNodes(tips, 1)
-	if reflect.DeepEqual(choicesList, trueOrFalseChoices) {
-		log.Print("是非题")
-		answers = []string{calcTrueOrFalse(body, strings.Join(tipsList, ""))}
-		return
+	for _, i := range trueOrFalseChoices {
+		if reflect.DeepEqual(choicesList, i) {
+			log.Print("是非题")
+			answers = []string{calcTrueOrFalse(body, strings.Join(tipsList, ""))}
+			return
+		}
 	}
 
 	n := strings.Count(body, "（）")
@@ -65,12 +73,6 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 
 	return
 }
-
-var (
-	trueOrFalseChoices = []string{"正确", "错误"}
-	trueOrFalseAnswer  = map[bool]string{true: "正确", false: "错误"}
-	negativeWords      = regexp.MustCompile(`不|无|没|非|免`)
-)
 
 func calcTrueOrFalse(body, tip string) string {
 	if slices.Contains(trueOrFalseChoices, tip) {
