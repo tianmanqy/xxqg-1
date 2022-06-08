@@ -44,7 +44,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body string, tips []*cdp.Node
 		}
 	}
 
-	n := strings.Count(body, "（）")
+	n := len(regexp.MustCompile(`[\(（]\s*[\)）]`).FindAllString(body, -1))
 	switch header[:9] {
 	case "单选题":
 		log.Print("单选题")
