@@ -26,28 +26,42 @@ func exam(ctx context.Context, url, class string) (err error) {
 	if class == "" {
 		title = "每日答题"
 	} else {
+		var page int
 		var buttons []*cdp.Node
-		if err = chromedp.Run(
-			countCtx,
-			chromedp.WaitVisible("div.month"),
-			chromedp.Sleep(time.Second),
-			chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
-		); err != nil {
-			return
+		page, err = getPageNumber(countCtx)
+		if err != nil {
+			return err
 		}
-		for {
-			if len(buttons) != 0 {
-				break
-			}
+
+		more := listenURL(countCtx, moreAPI, "GET")
+		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
 				countCtx,
-				chromedp.Click(`li[title="Next Page"][aria-disabled=false]`),
-				chromedp.WaitVisible("div.month"),
-				chromedp.Sleep(time.Second),
+				chromedp.WaitVisible("div.ant-spin-container"),
 				chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
 			); err != nil {
 				return
 			}
+
+			if len(buttons) != 0 || i == page-1 {
+				break
+			} else {
+				if err = chromedp.Run(countCtx, chromedp.Click(`li[title="Next Page"][aria-disabled=false]`)); err != nil {
+					return
+				}
+
+				select {
+				case <-countCtx.Done():
+					err = countCtx.Err()
+					return
+				case <-more:
+				}
+			}
+		}
+
+		if len(buttons) == 0 {
+			err = context.DeadlineExceeded
+			return
 		}
 
 		if err = chromedp.Run(
@@ -199,6 +213,21 @@ func exam(ctx context.Context, url, class string) (err error) {
 	}
 
 	log.Println("答题完毕！耗时:", time.Since(start))
+	return
+}
+
+func getPageNumber(ctx context.Context) (n int, err error) {
+	var buttons []*cdp.Node
+	if err = chromedp.Run(ctx, chromedp.Nodes("li.ant-pagination-item", &buttons)); err != nil {
+		return
+	}
+
+	if length := len(buttons); length == 0 {
+		err = fmt.Errorf("no pagination item found")
+	} else {
+		n, err = strconv.Atoi(buttons[length-1].AttributeValue("title"))
+	}
+
 	return
 }
 

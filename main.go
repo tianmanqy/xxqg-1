@@ -25,6 +25,7 @@ const (
 	weeklyURL   = "https://pc.xuexi.cn/points/exam-weekly-list.html"
 	paperURL    = "https://pc.xuexi.cn/points/exam-paper-list.html"
 	scoreAPI    = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
+	moreAPI     = "https://pc-proxy-api.xuexi.cn/api/exam/service/"
 	pclogURL    = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
 )
 
