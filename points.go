@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
-	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -31,41 +29,17 @@ func getPoints(ctx context.Context) (res pointsResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, pointsLimit)
 	defer cancel()
 
-	var id network.RequestID
-	done := make(chan struct{}, 1)
-	chromedp.ListenTarget(ctx, func(v any) {
-		switch ev := v.(type) {
-		case *network.EventRequestWillBeSent:
-			if strings.HasPrefix(ev.Request.URL, pointsAPI) {
-				id = ev.RequestID
-			}
-		case *network.EventLoadingFinished:
-			if ev.RequestID == id {
-				close(done)
-			}
-		}
-	})
-
+	done := listenURL(ctx, pointsAPI, "GET")
 	if err = chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
 		return
 	}
 
+	var b []byte
 	select {
 	case <-ctx.Done():
 		err = ctx.Err()
 		return
-	case <-done:
-	}
-
-	var b []byte
-	if err = chromedp.Run(
-		ctx,
-		chromedp.ActionFunc(func(ctx context.Context) (err error) {
-			b, err = network.GetResponseBody(id).Do(ctx)
-			return
-		}),
-	); err != nil {
-		return
+	case b = <-done:
 	}
 
 	err = json.Unmarshal(b, &res)
