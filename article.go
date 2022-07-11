@@ -11,8 +11,14 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+const (
+	homeURL = "https://www.xuexi.cn/"
+
+	articleLimit = 45 * time.Second
+)
+
 func article(ctx context.Context, n int) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*articleLimit)
 	defer cancel()
 
 	if err := chromedp.Run(ctx, chromedp.Navigate(homeURL)); err != nil {
@@ -91,7 +97,7 @@ func article(ctx context.Context, n int) error {
 		}
 
 		select {
-		case <-time.After(browseLimit):
+		case <-time.After(articleLimit):
 			log.Print("单篇文章超时！")
 		case <-done:
 		}

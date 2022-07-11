@@ -18,6 +18,8 @@ import (
 const (
 	trueStr  = "正确"
 	falseStr = "错误"
+
+	choiceLimit = examLimit / 2
 )
 
 var (

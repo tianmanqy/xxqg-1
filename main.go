@@ -17,33 +17,12 @@ import (
 )
 
 const (
-	homeURL     = "https://www.xuexi.cn/"
-	pointsURL   = "https://pc.xuexi.cn/points/my-points.html"
-	pointsAPI   = "https://pc-proxy-api.xuexi.cn/api/score/days/listScoreProgress"
-	loginURL    = "https://pc.xuexi.cn/points/login.html"
 	practiceURL = "https://pc.xuexi.cn/points/exam-practice.html"
 	weeklyURL   = "https://pc.xuexi.cn/points/exam-weekly-list.html"
 	paperURL    = "https://pc.xuexi.cn/points/exam-paper-list.html"
-	scoreAPI    = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
-	moreAPI     = "https://pc-proxy-api.xuexi.cn/api/exam/service/"
-	pclogURL    = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
-)
 
-const (
-	loginLimit  = 2 * time.Minute
-	tokenLimit  = time.Second
-	pointsLimit = 15 * time.Second
-	examLimit   = 15 * time.Second
-	choiceLimit = examLimit / 2
-	browseLimit = 45 * time.Second
-)
-
-const (
 	weeklyClass = "week"
 	paperClass  = "item"
-
-	articleNumber = 12
-	videoNumber   = 12
 )
 
 var (

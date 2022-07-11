@@ -8,8 +8,10 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+const videoLimit = 45 * time.Second
+
 func video(ctx context.Context, n int) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*browseLimit)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(n)*videoLimit)
 	defer cancel()
 
 	var url string
@@ -65,7 +67,7 @@ func video(ctx context.Context, n int) error {
 		}
 
 		select {
-		case <-time.After(browseLimit):
+		case <-time.After(videoLimit):
 			log.Print("单个视频超时！")
 		case <-done:
 		}

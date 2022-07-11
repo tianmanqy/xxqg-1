@@ -14,6 +14,13 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+const (
+	examAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/"
+	scoreAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
+
+	examLimit = 15 * time.Second
+)
+
 func exam(ctx context.Context, url, class string) (err error) {
 	countCtx, cancel := context.WithTimeout(ctx, examLimit)
 	defer cancel()
@@ -33,7 +40,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 			return err
 		}
 
-		more := listenURL(countCtx, moreAPI, "GET")
+		more := listenURL(countCtx, examAPI, "GET")
 		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
 				countCtx,

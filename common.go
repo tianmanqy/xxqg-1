@@ -76,6 +76,8 @@ func listenURL(ctx context.Context, url string, method ...string) <-chan []byte 
 	return c
 }
 
+const pclogURL = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
+
 func listenPclog(ctx context.Context) <-chan struct{} {
 	done, c := make(chan struct{}, 1), listenURL(ctx, pclogURL, "POST")
 	var n int

@@ -4,8 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/chromedp/chromedp"
+)
+
+const (
+	pointsURL = "https://pc.xuexi.cn/points/my-points.html"
+	pointsAPI = "https://pc-proxy-api.xuexi.cn/api/score/days/listScoreProgress"
+
+	pointsLimit = 15 * time.Second
+
+	articleNumber = 12
+	videoNumber   = 12
 )
 
 type task struct {

@@ -5,9 +5,17 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+)
+
+const (
+	loginURL = "https://pc.xuexi.cn/points/login.html"
+
+	loginLimit = 2 * time.Minute
+	tokenLimit = time.Second
 )
 
 func login() (context.Context, context.CancelFunc, error) {
