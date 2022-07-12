@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"log"
 	"strings"
+	"sync"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/fetch"
@@ -35,40 +37,50 @@ func listenFetch(ctx context.Context, actions ...chromedp.Action) error {
 	return chromedp.Run(ctx, append([]chromedp.Action{fetch.Enable()}, actions...)...)
 }
 
-func listenURL(ctx context.Context, url string, method string) <-chan []byte {
-	c, done := make(chan []byte, 1), make(chan struct{}, 1)
-	var id network.RequestID
+type event struct {
+	id    network.RequestID
+	url   string
+	bytes []byte
+}
+
+func listenURL(ctx context.Context, url string, method string, download bool) <-chan event {
+	c, done := make(chan event, 1), make(chan event, 1)
+	var m sync.Map
 	chromedp.ListenTarget(ctx, func(v any) {
 		switch ev := v.(type) {
 		case *network.EventRequestWillBeSent:
 			if strings.HasPrefix(ev.Request.URL, url) && method == ev.Request.Method {
-				id = ev.RequestID
+				m.Store(ev.RequestID, ev.Request.URL)
 			}
 		case *network.EventLoadingFinished:
-			if ev.RequestID == id {
-				done <- struct{}{}
+			if v, ok := m.Load(ev.RequestID); ok {
+				done <- event{ev.RequestID, v.(string), nil}
 			}
 		}
 	})
 
 	go func() {
 		for {
+			var event event
 			select {
 			case <-ctx.Done():
 				return
-			case <-done:
+			case event = <-done:
 			}
 
-			var b []byte
-			if err := chromedp.Run(
-				ctx,
-				chromedp.ActionFunc(func(ctx context.Context) (err error) {
-					b, err = network.GetResponseBody(id).Do(ctx)
-					return
-				}),
-			); err == nil {
-				c <- b
+			if download {
+				if err := chromedp.Run(
+					ctx,
+					chromedp.ActionFunc(func(ctx context.Context) (err error) {
+						event.bytes, err = network.GetResponseBody(event.id).Do(ctx)
+						return
+					}),
+				); err != nil {
+					log.Print(err)
+				}
 			}
+
+			c <- event
 		}
 	}()
 
@@ -78,7 +90,7 @@ func listenURL(ctx context.Context, url string, method string) <-chan []byte {
 const pclogURL = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
 
 func listenPclog(ctx context.Context) <-chan struct{} {
-	done, c := make(chan struct{}, 1), listenURL(ctx, pclogURL, "POST")
+	done, c := make(chan struct{}, 1), listenURL(ctx, pclogURL, "POST", false)
 	var n int
 	go func() {
 		for {

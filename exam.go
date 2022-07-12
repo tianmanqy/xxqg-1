@@ -40,7 +40,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 			return err
 		}
 
-		more := listenURL(countCtx, examAPI, "GET")
+		more := listenURL(countCtx, examAPI, "GET", false)
 		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
 				countCtx,
@@ -90,7 +90,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 	ctx, cancel = context.WithTimeout(ctx, time.Duration(n)*examLimit)
 	defer cancel()
 
-	done := listenURL(ctx, scoreAPI, "GET")
+	done := listenURL(ctx, scoreAPI, "GET", false)
 
 	start := time.Now()
 	for i := 1; i <= n; i++ {
