@@ -120,7 +120,7 @@ func main() {
 func checkError(task string, err error) {
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			log.Printf("%s: 任务超时或没有可用资源", task)
+			log.Printf("%s: 任务超时", task)
 		} else {
 			log.Printf("%s: %s", task, err)
 		}

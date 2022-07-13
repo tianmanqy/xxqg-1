@@ -15,17 +15,18 @@ import (
 )
 
 const (
-	examAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/"
-	scoreAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
+	weeklyAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/practice/pc/weekly/more"
+	paperAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/paper/pc/list"
+	scoreAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
 
 	examLimit = 15 * time.Second
 )
 
 func exam(ctx context.Context, url, class string) (err error) {
-	countCtx, cancel := context.WithTimeout(ctx, examLimit)
+	navCtx, cancel := context.WithTimeout(ctx, examLimit)
 	defer cancel()
 
-	if err = chromedp.Run(countCtx, chromedp.Navigate(url)); err != nil {
+	if err = chromedp.Run(navCtx, chromedp.Navigate(url)); err != nil {
 		return
 	}
 
@@ -35,15 +36,25 @@ func exam(ctx context.Context, url, class string) (err error) {
 	} else {
 		var page int
 		var buttons []*cdp.Node
-		page, err = getPageNumber(countCtx)
+		page, err = getPageNumber(navCtx)
 		if err != nil {
 			return err
 		}
 
-		more := listenURL(countCtx, examAPI, "GET", false)
+		pageCtx, cancel := context.WithTimeout(ctx, time.Duration(page)*time.Second)
+		defer cancel()
+
+		var api string
+		switch class {
+		case weeklyClass:
+			api = weeklyAPI
+		case paperClass:
+			api = paperAPI
+		}
+		more := listenURL(pageCtx, api, "GET", false)
 		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
-				countCtx,
+				pageCtx,
 				chromedp.WaitVisible("div.ant-spin-container"),
 				chromedp.Nodes(fmt.Sprintf("div.%s button:not(.ant-btn-background-ghost)", class), &buttons, chromedp.AtLeast(0)),
 			); err != nil {
@@ -53,26 +64,25 @@ func exam(ctx context.Context, url, class string) (err error) {
 			if len(buttons) != 0 || i == page-1 {
 				break
 			} else {
-				if err = chromedp.Run(countCtx, chromedp.Click(`li[title="Next Page"][aria-disabled=false]`)); err != nil {
+				time.Sleep(200 * time.Millisecond)
+				if err = chromedp.Run(pageCtx, chromedp.Click(`li[title="Next Page"][aria-disabled=false]`)); err != nil {
 					return
 				}
 
 				select {
-				case <-countCtx.Done():
-					err = countCtx.Err()
-					return
+				case <-pageCtx.Done():
+					return pageCtx.Err()
 				case <-more:
 				}
 			}
 		}
 
 		if len(buttons) == 0 {
-			err = context.DeadlineExceeded
-			return
+			return fmt.Errorf("没有可用试题")
 		}
 
 		if err = chromedp.Run(
-			countCtx,
+			pageCtx,
 			chromedp.MouseClickNode(buttons[0]),
 			chromedp.WaitVisible("div.question"),
 			chromedp.Text("div.title", &title, chromedp.AtLeast(0)),
@@ -80,6 +90,9 @@ func exam(ctx context.Context, url, class string) (err error) {
 			return
 		}
 	}
+
+	countCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 
 	n, err := getExamNumber(countCtx)
 	if err != nil {
@@ -90,9 +103,8 @@ func exam(ctx context.Context, url, class string) (err error) {
 	ctx, cancel = context.WithTimeout(ctx, time.Duration(n)*examLimit)
 	defer cancel()
 
-	done := listenURL(ctx, scoreAPI, "GET", false)
-
 	start := time.Now()
+	done := listenURL(ctx, scoreAPI, "GET", false)
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
 		var tips, inputs, choices []*cdp.Node
@@ -214,8 +226,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 
 	select {
 	case <-ctx.Done():
-		err = ctx.Err()
-		return
+		return ctx.Err()
 	case <-done:
 	}
 
