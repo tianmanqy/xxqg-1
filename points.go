@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/sunshineplan/chrome"
 )
 
 const (
@@ -40,20 +41,17 @@ func getPoints(ctx context.Context) (res pointsResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, pointsLimit)
 	defer cancel()
 
-	done := listenURL(ctx, pointsAPI, "GET", true)
+	done := chrome.ListenURL(ctx, pointsAPI, "GET", true)
 	if err = chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
 		return
 	}
 
-	var event event
 	select {
 	case <-ctx.Done():
 		err = ctx.Err()
-		return
-	case event = <-done:
+	case e := <-done:
+		err = json.Unmarshal(e.Bytes, &res)
 	}
-
-	err = json.Unmarshal(event.bytes, &res)
 
 	return
 }

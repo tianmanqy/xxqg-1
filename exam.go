@@ -12,6 +12,7 @@ import (
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
+	"github.com/sunshineplan/chrome"
 )
 
 const (
@@ -51,7 +52,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 		case paperClass:
 			api = paperAPI
 		}
-		more := listenURL(pageCtx, api, "GET", false)
+		more := chrome.ListenURL(pageCtx, api, "GET", false)
 		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
 				pageCtx,
@@ -104,7 +105,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 	defer cancel()
 
 	start := time.Now()
-	done := listenURL(ctx, scoreAPI, "GET", false)
+	done := chrome.ListenURL(ctx, scoreAPI, "GET", false)
 	for i := 1; i <= n; i++ {
 		log.Printf("#题目%d", i)
 		var tips, inputs, choices []*cdp.Node

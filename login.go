@@ -9,6 +9,7 @@ import (
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/sunshineplan/chrome"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 
 func login() (context.Context, context.CancelFunc, error) {
 	if *token != "" {
-		ctx, cancel, err := loginWithToken(headful)
+		ctx, cancel, err := loginWithToken(chrome.Headful(false))
 		if err != nil {
 			log.Printf("Token(%s)登录失败: %s", *token, err)
 		} else {
@@ -28,12 +29,16 @@ func login() (context.Context, context.CancelFunc, error) {
 		}
 	}
 
-	return loginWithQRCode(headful)
+	return loginWithQRCode(chrome.Headful(false))
 }
 
-func loginWithQRCode(c *chrome) (context.Context, context.CancelFunc, error) {
-	ctx, cancel, err := c.context()
+func loginWithQRCode(c *chrome.Chrome) (context.Context, context.CancelFunc, error) {
+	ctx, cancel, err := c.Context()
 	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := enableFetch(ctx); err != nil {
 		return nil, nil, err
 	}
 
@@ -59,9 +64,13 @@ func loginWithQRCode(c *chrome) (context.Context, context.CancelFunc, error) {
 	return ctx, cancel, nil
 }
 
-func loginWithToken(c *chrome) (context.Context, context.CancelFunc, error) {
-	ctx, cancel, err := c.context()
+func loginWithToken(c *chrome.Chrome) (context.Context, context.CancelFunc, error) {
+	ctx, cancel, err := c.Context()
 	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := enableFetch(ctx); err != nil {
 		return nil, nil, err
 	}
 
