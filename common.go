@@ -26,7 +26,7 @@ func enableFetch(ctx context.Context) error {
 const pclogURL = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
 
 func listenPclog(ctx context.Context) <-chan struct{} {
-	done, c := make(chan struct{}, 1), chrome.ListenURL(ctx, pclogURL, "POST", false)
+	done, c := make(chan struct{}, 1), chrome.ListenEvent(ctx, pclogURL, "POST", false)
 	var n int
 	go func() {
 		for {

@@ -41,7 +41,7 @@ func getPoints(ctx context.Context) (res pointsResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, pointsLimit)
 	defer cancel()
 
-	done := chrome.ListenURL(ctx, pointsAPI, "GET", true)
+	done := chrome.ListenEvent(ctx, pointsAPI, "GET", true)
 	if err = chromedp.Run(ctx, chromedp.Navigate(pointsURL)); err != nil {
 		return
 	}
