@@ -65,9 +65,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body, tip string, tips []*cdp
 	}
 
 	if n == len(choicesList) {
-		for _, choice := range choicesList {
-			answers = append(answers, choice)
-		}
+		answers = choicesList
 		return
 	}
 

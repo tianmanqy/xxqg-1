@@ -16,7 +16,7 @@ const (
 	loginURL = "https://pc.xuexi.cn/points/login.html"
 
 	loginLimit = 2 * time.Minute
-	tokenLimit = time.Second
+	tokenLimit = 2 * time.Second
 )
 
 func login() (context.Context, context.CancelFunc, error) {
