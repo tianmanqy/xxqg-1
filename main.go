@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -69,7 +68,7 @@ func main() {
 	}
 	log.Print(res)
 	t := res.CreateTask()
-	if reflect.DeepEqual(t, task{}) {
+	if t == emptyTask {
 		log.Print("学习积分已达上限！")
 		return
 	}

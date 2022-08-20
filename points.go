@@ -20,6 +20,8 @@ const (
 	videoNumber   = 12
 )
 
+var emptyTask task
+
 type task struct {
 	practice, weekly, paper bool
 	article, video          int
@@ -38,7 +40,10 @@ type pointsResult struct {
 }
 
 func getPoints(ctx context.Context) (res pointsResult, err error) {
-	ctx, cancel := context.WithTimeout(ctx, pointsLimit)
+	ctx, cancel := chromedp.NewContext(ctx)
+	defer cancel()
+
+	ctx, cancel = context.WithTimeout(ctx, pointsLimit)
 	defer cancel()
 
 	done := chrome.ListenEvent(ctx, pointsAPI, "GET", true)

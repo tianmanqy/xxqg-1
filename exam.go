@@ -24,6 +24,13 @@ const (
 )
 
 func exam(ctx context.Context, url, class string) (err error) {
+	ctx, cancel := chromedp.NewContext(ctx)
+	defer cancel()
+
+	if err = chromedp.Run(ctx); err != nil {
+		return
+	}
+
 	navCtx, cancel := context.WithTimeout(ctx, examLimit)
 	defer cancel()
 
@@ -106,124 +113,127 @@ func exam(ctx context.Context, url, class string) (err error) {
 
 	start := time.Now()
 	done := chrome.ListenEvent(ctx, scoreAPI, "GET", false)
-	for i := 1; i <= n; i++ {
-		log.Printf("#题目%d", i)
-		var tips, inputs, choices []*cdp.Node
-		var body, tip string
-		if err = chromedp.Run(
-			ctx,
-			chromedp.Click("span.tips", chromedp.NodeVisible),
-			chromedp.EvaluateAsDevTools(`$("div.line-feed").innerText`, &tip),
-			chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
-			chromedp.Click("div.q-header>svg"),
-			chromedp.WaitNotVisible("div.line-feed"),
-			chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
-			chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &body),
-		); err != nil {
-			return
-		}
-		if len(tips) == 0 {
-			log.Print("没有提示答案")
-		}
-
-		var answers []string
-		var incalculable bool
-		if len(inputs) == 0 {
-			choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, body, tip, tips)
-			if err != nil {
+	go func() {
+		for i := 1; i <= n; i++ {
+			log.Printf("#题目%d", i)
+			var tips, inputs, choices []*cdp.Node
+			var body, tip string
+			if err = chromedp.Run(
+				ctx,
+				chromedp.Click("span.tips", chromedp.NodeVisible),
+				chromedp.EvaluateAsDevTools(`$("div.line-feed").innerText`, &tip),
+				chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
+				chromedp.Click("div.q-header>svg"),
+				chromedp.WaitNotVisible("div.line-feed"),
+				chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
+				chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &body),
+			); err != nil {
 				return
 			}
+			if len(tips) == 0 {
+				log.Print("没有提示答案")
+			}
 
-			if len(answers) != 0 {
-				for _, i := range answers {
-					log.Println("选择", i)
-					if err = chromedp.Run(
-						ctx,
-						chromedp.Sleep(time.Second),
-						chromedp.Click(fmt.Sprintf("//div[%s][text()=%q]", classSelector("q-answer"), i)),
-					); err != nil {
+			var answers []string
+			var incalculable bool
+			if len(inputs) == 0 {
+				choices, answers, incalculable, err = getChoiceQuestionAnswers(ctx, body, tip, tips)
+				if err != nil {
+					return
+				}
+
+				if len(answers) != 0 {
+					for _, i := range answers {
+						log.Println("选择", i)
+						if err = chromedp.Run(
+							ctx,
+							chromedp.Sleep(time.Second),
+							chromedp.Click(fmt.Sprintf("//div[%s][text()=%q]", classSelector("q-answer"), i)),
+						); err != nil {
+							return
+						}
+					}
+				} else {
+					log.Print("未找到选择题答案")
+					if err = chromedp.Run(ctx, chromedp.Click(fmt.Sprintf("//div[%s]", classSelector("q-answer")))); err != nil {
 						return
 					}
 				}
 			} else {
-				log.Print("未找到选择题答案")
-				if err = chromedp.Run(ctx, chromedp.Click(fmt.Sprintf("//div[%s]", classSelector("q-answer")))); err != nil {
-					return
-				}
-			}
-		} else {
-			log.Print("填空题")
-			if len(inputs) == 1 && len(tips) > 1 {
-				var str string
-				for _, i := range tips {
-					str += i.NodeValue
-				}
-				log.Println("合并输入", str)
-				if err = chromedp.Run(ctx, chromedp.KeyEventNode(inputs[0], str)); err != nil {
-					return
-				}
-			} else {
-				for i, input := range inputs {
-					if i < len(tips) {
-						log.Println("输入", tips[i].NodeValue)
-						if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, tips[i].NodeValue)); err != nil {
-							return
-						}
-					} else {
-						str := randomString(body, rand.Intn(3)+2)
-						log.Println("随机输入", str)
-						if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
-							return
+				log.Print("填空题")
+				if len(inputs) == 1 && len(tips) > 1 {
+					var str string
+					for _, i := range tips {
+						str += i.NodeValue
+					}
+					log.Println("合并输入", str)
+					if err = chromedp.Run(ctx, chromedp.KeyEventNode(inputs[0], str)); err != nil {
+						return
+					}
+				} else {
+					for i, input := range inputs {
+						if i < len(tips) {
+							log.Println("输入", tips[i].NodeValue)
+							if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, tips[i].NodeValue)); err != nil {
+								return
+							}
+						} else {
+							str := randomString(body, rand.Intn(3)+2)
+							log.Println("随机输入", str)
+							if err = chromedp.Run(ctx, chromedp.KeyEventNode(input, str)); err != nil {
+								return
+							}
 						}
 					}
 				}
 			}
-		}
 
-		if class == paperClass && i == n {
-			if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled)); err != nil {
-				return
-			}
-		} else {
-			if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn", chromedp.NodeEnabled)); err != nil {
-				return
-			}
-
-			var nodes []*cdp.Node
-			if err = chromedp.Run(
-				ctx,
-				chromedp.Sleep(time.Second),
-				chromedp.Nodes("div.action-row>button.next-btn:enabled", &nodes, chromedp.AtLeast(0)),
-			); err != nil {
-				return
-			}
-
-			if len(nodes) != 0 {
-				log.Print("答错 ×")
-				if len(inputs) == 0 && !incalculable {
-					log.Println("题目:", body)
-					log.Println("提示:", tip)
-					printTips(tips)
-					printChoices(choices)
+			if class == paperClass && i == n {
+				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled)); err != nil {
+					return
 				}
-				var answer string
+			} else {
+				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn", chromedp.NodeEnabled)); err != nil {
+					return
+				}
+
+				var nodes []*cdp.Node
 				if err = chromedp.Run(
 					ctx,
-					chromedp.EvaluateAsDevTools(`$("div.answer").innerText`, &answer),
-					chromedp.Click("div.action-row>button.next-btn"),
+					chromedp.Sleep(time.Second),
+					chromedp.Nodes("div.action-row>button.next-btn:enabled", &nodes, chromedp.AtLeast(0)),
 				); err != nil {
 					return
 				}
-				log.Print(answer)
-			} else {
-				if class != paperClass {
-					log.Print("答对 √")
+
+				if len(nodes) != 0 {
+					log.Print("答错 ×")
+					if len(inputs) == 0 && !incalculable {
+						log.Println("题目:", body)
+						log.Println("提示:", tip)
+						printTips(tips)
+						printChoices(choices)
+					}
+					var answer string
+					if err := chromedp.Run(
+						ctx,
+						chromedp.EvaluateAsDevTools(`$("div.answer").innerText`, &answer),
+						chromedp.Click("div.action-row>button.next-btn"),
+					); err != nil {
+						log.Println("无法获取答案:", err)
+					} else {
+						log.Print(answer)
+					}
+				} else {
+					if class != paperClass {
+						log.Print("答对 √")
+					}
 				}
 			}
-		}
 
-		time.Sleep(2 * time.Second)
-	}
+			time.Sleep(2 * time.Second)
+		}
+	}()
 
 	select {
 	case <-ctx.Done():
