@@ -99,6 +99,13 @@ func TestCalcSingleChoice(t *testing.T) {
 			[]string{"A", "B"},
 			"SABS",
 		},
+		{
+			1,
+			"A,B,C,D",
+			[]string{"A-B-E-F", "A-B-F-C", "A-B-C-D"},
+			[]string{"A", "B", "C", "D"},
+			"A-B-C-D",
+		},
 	}
 
 	for _, tc := range testcase {

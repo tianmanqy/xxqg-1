@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
@@ -109,7 +111,7 @@ func calcSingleChoice(n int, tip string, choices, tips []string) string {
 	}
 	slices.SortStableFunc(res, func(a, b result) bool { return a.distance < b.distance })
 
-	if !strings.Contains(tip, str) && len(tips) > n && len(choices) > 2 {
+	if !contains(tip, str) && len(tips) > n && len(choices) > 2 {
 		log.Print("选择未出现内容")
 		_, others, _ := calcMultipleChoice(len(choices)-1, choices, tips)
 		return others[0]
@@ -174,6 +176,25 @@ func calcMultipleChoice(n int, choices, tips []string) (answers, others []string
 	}
 
 	return
+}
+
+func contains(tip, str string) bool {
+	punct := make(map[rune]struct{})
+	for _, r := range str {
+		if unicode.Is(unicode.Punct, r) {
+			punct[r] = struct{}{}
+		}
+	}
+	puncts := maps.Keys(punct)
+
+	var rs []rune
+	for _, r := range tip {
+		if unicode.Is(unicode.Punct, r) && !slices.Contains(puncts, r) {
+			continue
+		}
+		rs = append(rs, r)
+	}
+	return strings.Contains(string(rs), str)
 }
 
 func convertNodes(nodes []*cdp.Node, n int) []string {
