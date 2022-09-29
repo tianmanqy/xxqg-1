@@ -19,30 +19,28 @@ const (
 	tokenLimit = 2 * time.Second
 )
 
-func login() (context.Context, context.CancelFunc, error) {
+func login() (*chrome.Chrome, error) {
+	c := chrome.Headful(false)
 	if *token != "" {
-		ctx, cancel, err := loginWithToken(chrome.Headful(false))
-		if err != nil {
+		if err := loginWithToken(c); err != nil {
 			log.Printf("Token(%s)登录失败: %s", *token, err)
 		} else {
-			return ctx, cancel, nil
+			return c, nil
 		}
 	}
+	if err := loginWithQRCode(c); err != nil {
+		return nil, err
+	}
 
-	return loginWithQRCode(chrome.Headful(false))
+	return c, nil
 }
 
-func loginWithQRCode(c *chrome.Chrome) (context.Context, context.CancelFunc, error) {
-	ctx, cancel, err := c.Context()
-	if err != nil {
-		return nil, nil, err
+func loginWithQRCode(c *chrome.Chrome) error {
+	if err := c.EnableFetch(filter); err != nil {
+		return err
 	}
 
-	if err := enableFetch(ctx); err != nil {
-		return nil, nil, err
-	}
-
-	loginCtx, loginCancel := context.WithTimeout(ctx, loginLimit)
+	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
 	defer loginCancel()
 
 	log.Print("请先扫码登录")
@@ -54,27 +52,22 @@ func loginWithQRCode(c *chrome.Chrome) (context.Context, context.CancelFunc, err
 		chromedp.WaitVisible("span.logged-text"),
 		getToken(),
 	); err != nil {
-		cancel()
-		return nil, nil, err
+		c.Close()
+		return err
 	}
 	log.Print("扫码登录成功")
 
 	os.WriteFile(tokenPath, []byte("token="+*token), 0644)
 
-	return ctx, cancel, nil
+	return nil
 }
 
-func loginWithToken(c *chrome.Chrome) (context.Context, context.CancelFunc, error) {
-	ctx, cancel, err := c.Context()
-	if err != nil {
-		return nil, nil, err
+func loginWithToken(c *chrome.Chrome) error {
+	if err := c.EnableFetch(filter); err != nil {
+		return err
 	}
 
-	if err := enableFetch(ctx); err != nil {
-		return nil, nil, err
-	}
-
-	loginCtx, loginCancel := context.WithTimeout(ctx, loginLimit)
+	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
 	defer loginCancel()
 
 	if err := chromedp.Run(
@@ -83,20 +76,20 @@ func loginWithToken(c *chrome.Chrome) (context.Context, context.CancelFunc, erro
 		chromedp.Navigate(loginURL),
 		chromedp.WaitReady("div.login"),
 	); err != nil {
-		cancel()
-		return nil, nil, err
+		c.Close()
+		return err
 	}
 
 	tokenCtx, tokenCancel := context.WithTimeout(loginCtx, tokenLimit)
 	defer tokenCancel()
 
 	if err := chromedp.Run(tokenCtx, chromedp.WaitVisible("span.logged-text")); err != nil {
-		cancel()
-		return nil, nil, errors.New("无效Token")
+		c.Close()
+		return errors.New("无效Token")
 	}
 
 	log.Print("使用Token登录成功")
-	return ctx, cancel, nil
+	return nil
 }
 
 func getToken() chromedp.Action {

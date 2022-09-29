@@ -52,14 +52,14 @@ func main() {
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
-	ctx, cancel, err := login()
+	c, err := login()
 	if err != nil {
 		log.Println("登录失败:", err)
 		return
 	}
-	defer cancel()
+	defer c.Close()
 
-	res, err := getPoints(ctx)
+	res, err := getPoints(c)
 	if err != nil {
 		log.Println("获取学习积分失败:", err)
 		if !*force {
@@ -77,10 +77,10 @@ func main() {
 
 	dividingLine()
 	for t.practice {
-		checkError("每日答题", exam(ctx, practiceURL, ""))
+		checkError("每日答题", exam(c, practiceURL, ""))
 		dividingLine()
 
-		res, err = getPoints(ctx)
+		res, err = getPoints(c)
 		if err != nil {
 			log.Println("获取学习积分失败:", err)
 			break
@@ -88,19 +88,19 @@ func main() {
 		t = res.CreateTask()
 	}
 	if t.weekly {
-		checkError("每周答题", exam(ctx, weeklyURL, weeklyClass))
+		checkError("每周答题", exam(c, weeklyURL, weeklyClass))
 		dividingLine()
 	}
 	if t.paper {
-		checkError("专项答题", exam(ctx, paperURL, paperClass))
+		checkError("专项答题", exam(c, paperURL, paperClass))
 		dividingLine()
 	}
 	if t.article > 0 {
-		checkError("选读文章", article(ctx, t.article))
+		checkError("选读文章", article(c, t.article))
 		dividingLine()
 	}
 	if t.video > 0 {
-		checkError("视听学习", video(ctx, t.video))
+		checkError("视听学习", video(c, t.video))
 		dividingLine()
 	}
 
@@ -108,7 +108,7 @@ func main() {
 
 	time.Sleep(time.Second)
 
-	res, err = getPoints(ctx)
+	res, err = getPoints(c)
 	if err != nil {
 		log.Println("获取学习积分失败:", err)
 	} else {

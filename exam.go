@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -279,10 +278,6 @@ func getExamNumber(ctx context.Context) (n int, err error) {
 	return
 }
 
-func classSelector(class string) string {
-	return fmt.Sprintf(`contains(concat(" ", normalize-space(@class), " "), " %s ")`, class)
-}
-
 func randomString(str string, size int) string {
 	rs := []rune(str)
 	if length := len(rs); length > size {
@@ -294,33 +289,4 @@ func randomString(str string, size int) string {
 		return "不知道"
 	}
 	return str
-}
-
-func printChoices(choices []*cdp.Node) (output string) {
-	for i, choice := range choices {
-		switch i % 3 {
-		case 0:
-			if i != 0 {
-				output += " "
-			}
-			output += choice.NodeValue + "."
-		case 2:
-			output += choice.NodeValue
-		}
-	}
-	output = "选项: " + output
-
-	log.Print(output)
-	return
-}
-
-func printTips(tips []*cdp.Node) (output string) {
-	var value []string
-	for i, tip := range tips {
-		value = append(value, fmt.Sprintf("%d.%s", i+1, tip.NodeValue))
-	}
-	output = "提示项: " + strings.Join(value, " ")
-
-	log.Print(output)
-	return
 }
