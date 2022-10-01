@@ -19,25 +19,22 @@ const (
 	tokenLimit = 2 * time.Second
 )
 
-func login() (*chrome.Chrome, error) {
-	c := chrome.Headful(false)
+func login() (c *chrome.Chrome, err error) {
 	if *token != "" {
-		if err := loginWithToken(c); err != nil {
+		if c, err = loginWithToken(); err != nil {
 			log.Printf("Token(%s)登录失败: %s", *token, err)
 		} else {
-			return c, nil
+			return
 		}
 	}
-	if err := loginWithQRCode(c); err != nil {
-		return nil, err
-	}
-
-	return c, nil
+	c, err = loginWithQRCode()
+	return
 }
 
-func loginWithQRCode(c *chrome.Chrome) error {
+func loginWithQRCode() (*chrome.Chrome, error) {
+	c := chrome.Headful(false)
 	if err := c.EnableFetch(filter); err != nil {
-		return err
+		return nil, err
 	}
 
 	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
@@ -53,18 +50,19 @@ func loginWithQRCode(c *chrome.Chrome) error {
 		getToken(),
 	); err != nil {
 		c.Close()
-		return err
+		return nil, err
 	}
 	log.Print("扫码登录成功")
 
 	os.WriteFile(tokenPath, []byte("token="+*token), 0644)
 
-	return nil
+	return c, nil
 }
 
-func loginWithToken(c *chrome.Chrome) error {
+func loginWithToken() (*chrome.Chrome, error) {
+	c := chrome.Headful(false)
 	if err := c.EnableFetch(filter); err != nil {
-		return err
+		return nil, err
 	}
 
 	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
@@ -77,7 +75,7 @@ func loginWithToken(c *chrome.Chrome) error {
 		chromedp.WaitReady("div.login"),
 	); err != nil {
 		c.Close()
-		return err
+		return nil, err
 	}
 
 	tokenCtx, tokenCancel := context.WithTimeout(loginCtx, tokenLimit)
@@ -85,11 +83,11 @@ func loginWithToken(c *chrome.Chrome) error {
 
 	if err := chromedp.Run(tokenCtx, chromedp.WaitVisible("span.logged-text")); err != nil {
 		c.Close()
-		return errors.New("无效Token")
+		return nil, errors.New("无效Token")
 	}
 
 	log.Print("使用Token登录成功")
-	return nil
+	return c, nil
 }
 
 func getToken() chromedp.Action {
