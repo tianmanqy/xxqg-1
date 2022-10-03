@@ -29,8 +29,8 @@ github.com/sergi/go-diff v1.2.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNX
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
-github.com/sunshineplan/chrome v1.0.19 h1:C308TdTp3skCn1mWLqsUhGiuEKzDMoGBG3BaM1VONLk=
-github.com/sunshineplan/chrome v1.0.19/go.mod h1:IVm3C9RG+Vrm8Sri9wfUelTQDS9RjQ9mw0HU7+wId1Y=
+github.com/sunshineplan/chrome v1.0.20 h1:cgQ5A6lu4A3Ia7xbG0khzGGkKhJhuhCvZ6hDgEtq1DU=
+github.com/sunshineplan/chrome v1.0.20/go.mod h1:me3ldMpwAvPON1XXKNKrB1KpiQfo3HKmcYoxJLUmivw=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de h1:fkw+7JkxF3U1GzQoX9h69Wvtvxajo5Rbzy6+YMMzPIg=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de/go.mod h1:irMhzlTz8+fVFj6CH2AN2i+WI5S6wWFtK3MBCIxIpyI=
 golang.org/x/exp v0.0.0-20220929132715-df6207c56b9e h1:CEsRTv4qpqnMsjX0sa7g7EarLEN7mA1LYcQK44QRno8=
