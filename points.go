@@ -62,7 +62,7 @@ func getPoints(ctx context.Context) (res pointsResult, err error) {
 }
 
 func (res pointsResult) CreateTask() task {
-	t := task{false, true, true, articleNumber, videoNumber}
+	t := task{false, false, false, articleNumber, videoNumber}
 	for _, i := range res.Data.TaskProgress {
 		switch i.Title {
 		case "每日答题":
