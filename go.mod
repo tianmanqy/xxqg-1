@@ -6,9 +6,9 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20230130203205-31e3d8a04b57
 	github.com/chromedp/chromedp v0.8.7
 	github.com/sergi/go-diff v1.3.1
-	github.com/sunshineplan/chrome v1.1.0
+	github.com/sunshineplan/chrome v1.1.1
 	github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de
-	golang.org/x/exp v0.0.0-20230131013936-aae9b4e6329d
+	golang.org/x/exp v0.0.0-20230131160201-f062dba9d201
 )
 
 require (

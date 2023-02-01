@@ -32,7 +32,7 @@ func login() (c *chrome.Chrome, err error) {
 }
 
 func loginWithQRCode() (*chrome.Chrome, error) {
-	c := chrome.Headful(false)
+	c := chrome.Headful()
 	if err := c.EnableFetch(filter); err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func loginWithQRCode() (*chrome.Chrome, error) {
 }
 
 func loginWithToken() (*chrome.Chrome, error) {
-	c := chrome.Headful(false)
+	c := chrome.Headful()
 	if err := c.EnableFetch(filter); err != nil {
 		return nil, err
 	}
