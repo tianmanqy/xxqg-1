@@ -1,7 +1,7 @@
-github.com/chromedp/cdproto v0.0.0-20230130203205-31e3d8a04b57 h1:QzBfUHmMYbMTatylLQ9DXa2XT1PCAtssO54wNav22as=
-github.com/chromedp/cdproto v0.0.0-20230130203205-31e3d8a04b57/go.mod h1:GKljq0VrfU4D5yc+2qA6OVr8pmO/MBbPEWqWQ/oqGEs=
-github.com/chromedp/chromedp v0.8.7 h1:dYOYc5ynTBzwSLOi+1IfgHwPr8r2BqV48l/RC+3OuJ0=
-github.com/chromedp/chromedp v0.8.7/go.mod h1:iL+ywnwk3eG3EVXV1ackXBMNzdEh3Ye/KHvQkq1KRKU=
+github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9 h1:wMSvdj3BswqfQOXp2R1bJOAE7xIQLt2dlMQDMf836VY=
+github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9/go.mod h1:GKljq0VrfU4D5yc+2qA6OVr8pmO/MBbPEWqWQ/oqGEs=
+github.com/chromedp/chromedp v0.8.8 h1:epoi7xlyWyTiD0EJxZdplGjp65/t8xGI2+mJ38KeQE0=
+github.com/chromedp/chromedp v0.8.8/go.mod h1:pBIbHgJacFcxdGwZNTdPLGSBvOxQUbd2d9tb2Xg7CJQ=
 github.com/chromedp/sysutil v1.0.0 h1:+ZxhTpfpZlmchB58ih/LBHX52ky7w2VhQVKQMucy3Ic=
 github.com/chromedp/sysutil v1.0.0/go.mod h1:kgWmDdq8fTzXYcKIBqIYvRRTnYb9aNS9moAV0xufSww=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -33,11 +33,11 @@ github.com/sunshineplan/chrome v1.1.1 h1:yG6w8AlB6VtStcWzJjWIbym1Z3lzf+PTfnIZYV2
 github.com/sunshineplan/chrome v1.1.1/go.mod h1:UO/GP6CVlv20b2IZRE9qldq38/JQ4k6ZE5FWpahH1ho=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de h1:fkw+7JkxF3U1GzQoX9h69Wvtvxajo5Rbzy6+YMMzPIg=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de/go.mod h1:irMhzlTz8+fVFj6CH2AN2i+WI5S6wWFtK3MBCIxIpyI=
-golang.org/x/exp v0.0.0-20230131160201-f062dba9d201 h1:BEABXpNXLEz0WxtA+6CQIz2xkg80e+1zrhWyMcq8VzE=
-golang.org/x/exp v0.0.0-20230131160201-f062dba9d201/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230304125523-9ff063c70017 h1:3Ea9SZLCB0aRIhSEjM+iaGIlzzeDJdpi579El/YIhEE=
+golang.org/x/exp v0.0.0-20230304125523-9ff063c70017/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.4.0 h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=
-golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.6.0 h1:MVltZSvRTcU2ljQOhs94SXPftV6DCNnZViHeQps87pQ=
+golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
