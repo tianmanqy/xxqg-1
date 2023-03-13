@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9
-	github.com/chromedp/chromedp v0.8.8
+	github.com/chromedp/chromedp v0.9.1
 	github.com/sergi/go-diff v1.3.1
 	github.com/sunshineplan/chrome v1.1.1
 	github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de
