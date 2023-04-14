@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -12,39 +11,27 @@ import (
 	"github.com/sunshineplan/chrome"
 )
 
-func filter(ev *fetch.EventRequestPaused) bool {
-	res := ev.ResourceType == network.ResourceTypeDocument ||
-		ev.ResourceType == network.ResourceTypeScript ||
-		ev.ResourceType == network.ResourceTypeStylesheet ||
-		ev.ResourceType == network.ResourceTypeXHR
-	if res {
-		//log.Println("allow:", ev.Request.URL)
+const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+
+func newChrome(headful, disableAutomationControlled bool) (c *chrome.Chrome) {
+	if headful {
+		c = chrome.Headful()
 	} else {
-		//log.Println("block:", ev.Request.URL)
+		c = chrome.Headless().UserAgent(ua)
 	}
-	return res
-}
-
-const pclogURL = "https://iflow-api.xuexi.cn/logflow/api/v1/pclog"
-
-func listenPclog(ctx context.Context) <-chan struct{} {
-	done, c := make(chan struct{}, 1), chrome.ListenEvent(ctx, pclogURL, "POST", false)
-	var n int
-	go func() {
-		for {
-			select {
-			case <-c:
-				if n%2 == 1 {
-					done <- struct{}{}
-				}
-				n++
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return done
+	if disableAutomationControlled {
+		c.DisableAutomationControlled()
+	}
+	if err := c.EnableFetch(func(ev *fetch.EventRequestPaused) bool {
+		return ev.ResourceType == network.ResourceTypeDocument ||
+			ev.ResourceType == network.ResourceTypeScript ||
+			ev.ResourceType == network.ResourceTypeStylesheet ||
+			ev.ResourceType == network.ResourceTypeXHR
+	}); err != nil {
+		c.Close()
+		panic(err)
+	}
+	return
 }
 
 func classSelector(class string) string {

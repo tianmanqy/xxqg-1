@@ -19,78 +19,67 @@ const (
 	tokenLimit = 2 * time.Second
 )
 
-func login() (c *chrome.Chrome, err error) {
+func login() (chrome *chrome.Chrome, err error) {
 	if *token != "" {
-		if c, err = loginWithToken(); err != nil {
+		if chrome, err = loginWithToken(); err != nil {
 			log.Printf("Token(%s)登录失败: %s", *token, err)
 		} else {
+			log.Print("使用Token登录成功")
 			return
 		}
 	}
-	c, err = loginWithQRCode()
-	return
-}
-
-func loginWithQRCode() (*chrome.Chrome, error) {
-	c := chrome.Headful()
-	if err := c.EnableFetch(filter); err != nil {
-		return nil, err
-	}
-
-	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
-	defer loginCancel()
 
 	log.Print("请先扫码登录")
-	if err := chromedp.Run(
-		loginCtx,
-		chromedp.Navigate(loginURL),
-		chromedp.WaitVisible("span.refresh"),
-		chromedp.EvaluateAsDevTools(`$("span.refresh").scrollIntoViewIfNeeded()`, nil),
-		chromedp.WaitVisible("span.logged-text"),
-		getToken(),
-	); err != nil {
-		c.Close()
-		return nil, err
+	if err = loginWithQRCode(); err != nil {
+		return
 	}
 	log.Print("扫码登录成功")
 
-	os.WriteFile(tokenPath, []byte("token="+*token), 0644)
-
-	return c, nil
+	return loginWithToken()
 }
 
 func loginWithToken() (*chrome.Chrome, error) {
-	c := chrome.Headful()
-	if err := c.EnableFetch(filter); err != nil {
-		return nil, err
-	}
+	chrome := newChrome(false, true)
 
-	loginCtx, loginCancel := context.WithTimeout(c, loginLimit)
-	defer loginCancel()
+	ctx, cancel := context.WithTimeout(chrome, loginLimit)
+	defer cancel()
 
 	if err := chromedp.Run(
-		loginCtx,
+		ctx,
 		network.SetCookie("token", *token).WithDomain(".xuexi.cn"),
 		chromedp.Navigate(loginURL),
 		chromedp.WaitReady("div.login"),
 	); err != nil {
-		c.Close()
 		return nil, err
 	}
 
-	tokenCtx, tokenCancel := context.WithTimeout(loginCtx, tokenLimit)
-	defer tokenCancel()
+	ctx, cancel = context.WithTimeout(ctx, tokenLimit)
+	defer cancel()
 
-	if err := chromedp.Run(tokenCtx, chromedp.WaitVisible("span.logged-text")); err != nil {
-		c.Close()
+	if err := chromedp.Run(ctx, chromedp.WaitVisible("span.logged-text")); err != nil {
 		return nil, errors.New("无效Token")
 	}
 
-	log.Print("使用Token登录成功")
-	return c, nil
+	return chrome, nil
 }
 
-func getToken() chromedp.Action {
+func loginWithQRCode() error {
+	chrome := newChrome(true, true)
+	defer chrome.Close()
+
+	ctx, cancel := context.WithTimeout(chrome, loginLimit)
+	defer cancel()
+
+	return chromedp.Run(
+		ctx,
+		chromedp.Navigate(loginURL),
+		chromedp.ScrollIntoView("span.refresh", chromedp.NodeVisible),
+		chromedp.WaitVisible("span.logged-text"),
+		saveToken(),
+	)
+}
+
+func saveToken() chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		cookies, err := network.GetCookies().Do(ctx)
 		if err != nil {
@@ -99,8 +88,9 @@ func getToken() chromedp.Action {
 		for _, cookie := range cookies {
 			if cookie.Name == "token" {
 				*token = cookie.Value
+				return os.WriteFile(tokenPath, []byte("token="+*token), 0644)
 			}
 		}
-		return nil
+		return errors.New("未找到Token")
 	})
 }

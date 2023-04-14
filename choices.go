@@ -39,7 +39,7 @@ func getChoiceQuestionAnswers(ctx context.Context, body, tip string, tips []*cdp
 	var header string
 	if err = chromedp.Run(
 		ctx,
-		chromedp.EvaluateAsDevTools(`$("div.q-header").innerText`, &header),
+		chromedp.Text("div.q-header", &header),
 		chromedp.Nodes(fmt.Sprintf("//div[%s]/text()", classSelector("q-answer")), &choices, chromedp.AtLeast(0)),
 	); err != nil {
 		return

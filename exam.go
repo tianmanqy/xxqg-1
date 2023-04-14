@@ -7,22 +7,33 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/chromedp"
 	"github.com/sunshineplan/chrome"
 )
 
 const (
-	weeklyAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/practice/pc/weekly/more"
-	paperAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/paper/pc/list"
-	scoreAPI  = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
+	paperAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/paper/pc/list"
+	scoreAPI = "https://pc-proxy-api.xuexi.cn/api/exam/service/detail/score"
 
 	examLimit = 15 * time.Second
+
+	captchaAPI = "https://cf.aliyun.com/nocaptcha/analyze.jsonp"
 )
 
+var examStatus = true
+
 func exam(ctx context.Context, url, class string) (err error) {
+	if !examStatus {
+		log.Print("检测到验证滑块未通过，跳过答题")
+		return
+	}
+
 	ctx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
@@ -51,14 +62,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 		pageCtx, cancel := context.WithTimeout(ctx, time.Duration(page)*time.Second)
 		defer cancel()
 
-		var api string
-		switch class {
-		case weeklyClass:
-			api = weeklyAPI
-		case paperClass:
-			api = paperAPI
-		}
-		more := chrome.ListenEvent(pageCtx, api, "GET", false)
+		more := chrome.ListenEvent(pageCtx, paperAPI, "GET", false)
 		for i := 0; i < page; i++ {
 			if err = chromedp.Run(
 				pageCtx,
@@ -98,10 +102,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 		}
 	}
 
-	countCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	n, err := getExamNumber(countCtx)
+	n, err := getExamNumber(ctx)
 	if err != nil {
 		return
 	}
@@ -120,12 +121,12 @@ func exam(ctx context.Context, url, class string) (err error) {
 			if err = chromedp.Run(
 				ctx,
 				chromedp.Click("span.tips", chromedp.NodeVisible),
-				chromedp.EvaluateAsDevTools(`$("div.line-feed").innerText`, &tip),
+				chromedp.Text("div.line-feed", &tip),
 				chromedp.Nodes(`//div[@class="line-feed"]//font[@color="red"]/text()`, &tips, chromedp.AtLeast(0)),
 				chromedp.Click("div.q-header>svg"),
 				chromedp.WaitNotVisible("div.line-feed"),
 				chromedp.Nodes("input.blank", &inputs, chromedp.AtLeast(0)),
-				chromedp.EvaluateAsDevTools(`$("div.q-body").innerText`, &body),
+				chromedp.Text("div.q-body", &body),
 			); err != nil {
 				return
 			}
@@ -187,11 +188,7 @@ func exam(ctx context.Context, url, class string) (err error) {
 				}
 			}
 
-			if class == paperClass && i == n {
-				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled)); err != nil {
-					return
-				}
-			} else {
+			if class != paperClass || i < n {
 				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.next-btn", chromedp.NodeEnabled)); err != nil {
 					return
 				}
@@ -206,22 +203,32 @@ func exam(ctx context.Context, url, class string) (err error) {
 				}
 
 				if len(nodes) != 0 {
-					log.Print("答错 ×")
-					if len(inputs) == 0 && !incalculable {
-						log.Println("题目:", body)
-						log.Println("提示:", tip)
-						printTips(tips)
-						printChoices(choices)
-					}
 					var answer string
 					if err := chromedp.Run(
 						ctx,
 						chromedp.EvaluateAsDevTools(`$("div.answer").innerText`, &answer),
 						chromedp.Click("div.action-row>button.next-btn"),
-					); err != nil {
-						log.Println("无法获取答案:", err)
-					} else {
+					); err == nil {
+						log.Print("答错 ×")
+						if len(inputs) == 0 && !incalculable {
+							log.Println("题目:", body)
+							log.Println("提示:", tip)
+							printTips(tips)
+							printChoices(choices)
+						}
 						log.Print(answer)
+					} else {
+						if strings.Contains(err.Error(), "Cannot read properties of null (reading 'innerText')") {
+							log.Print("答对 √")
+						} else {
+							log.Println("无法获取答案:", err)
+							if len(inputs) == 0 && !incalculable {
+								log.Println("题目:", body)
+								log.Println("提示:", tip)
+								printTips(tips)
+								printChoices(choices)
+							}
+						}
 					}
 				} else {
 					if class != paperClass {
@@ -230,7 +237,16 @@ func exam(ctx context.Context, url, class string) (err error) {
 				}
 			}
 
-			time.Sleep(2 * time.Second)
+			if i == n && class == paperClass {
+				if err = chromedp.Run(ctx, chromedp.Click("div.action-row>button.submit-btn", chromedp.NodeEnabled)); err != nil {
+					return
+				}
+			}
+
+			if err = checkCaptcha(ctx); err != nil {
+				examStatus = false
+				return
+			}
 		}
 	}()
 
@@ -260,11 +276,14 @@ func getPageNumber(ctx context.Context) (n int, err error) {
 }
 
 func getExamNumber(ctx context.Context) (n int, err error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
 	var pager string
 	if err = chromedp.Run(
 		ctx,
 		chromedp.WaitVisible("div.question"),
-		chromedp.EvaluateAsDevTools(`$("div.pager").innerText`, &pager),
+		chromedp.Text("div.pager", &pager),
 	); err != nil {
 		return
 	}
@@ -276,6 +295,65 @@ func getExamNumber(ctx context.Context) (n int, err error) {
 	}
 
 	return
+}
+
+func checkCaptcha(ctx context.Context) error {
+	check, cancel := context.WithTimeout(ctx, time.Second*2)
+	defer cancel()
+
+	if err := chromedp.Run(check, chromedp.WaitVisible("div#nc_mask")); err != nil {
+		return nil
+	}
+	log.Print("出现验证滑块")
+
+	slide, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	x, y, err := coordinate(slide, "span.btn_slide")
+	if err != nil {
+		return err
+	}
+
+	done := chrome.ListenEvent(slide, captchaAPI, "GET", true)
+	if err := chromedp.Run(
+		slide,
+		chromedp.MouseEvent(input.MousePressed, x, y, chromedp.ButtonLeft, chromedp.ClickCount(1)),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+43, y),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+86, y),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+129, y),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+172, y),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+215, y),
+		chromedp.Sleep(time.Millisecond*150),
+		chromedp.MouseEvent(input.MouseMoved, x+258, y),
+		chromedp.MouseEvent(input.MouseReleased, x+258, y, chromedp.ButtonLeft),
+	); err != nil {
+		return err
+	}
+
+	select {
+	case <-slide.Done():
+		return slide.Err()
+	case e := <-done:
+		if s := string(e.Bytes); strings.Contains(s, `"success":true`) {
+			return nil
+		} else {
+			log.Print(s)
+			return fmt.Errorf("验证滑块未通过")
+		}
+	}
+}
+
+func coordinate(ctx context.Context, sel any) (float64, float64, error) {
+	var model *dom.BoxModel
+	if err := chromedp.Run(ctx, chromedp.Dimensions(sel, &model)); err != nil {
+		return 0, 0, err
+	}
+	return model.Border[0] + float64(model.Width)/2, model.Border[1] + float64(model.Height)/2, nil
 }
 
 func randomString(str string, size int) string {

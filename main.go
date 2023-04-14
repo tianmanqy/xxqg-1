@@ -1,27 +1,14 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/vharitonsky/iniflags"
-)
-
-const (
-	practiceURL = "https://pc.xuexi.cn/points/exam-practice.html"
-	weeklyURL   = "https://pc.xuexi.cn/points/exam-weekly-list.html"
-	paperURL    = "https://pc.xuexi.cn/points/exam-paper-list.html"
-
-	weeklyClass = "week"
-	paperClass  = "item"
 )
 
 var (
@@ -31,101 +18,65 @@ var (
 
 var tokenPath string
 
-func init() {
+func main() {
+	defer func() {
+		//if err := recover(); err != nil {
+		//	log.Print(err)
+		//}
+
+		fmt.Println("Press enter key to exit . . .")
+		fmt.Scanln()
+	}()
+
 	self, err := os.Executable()
 	if err != nil {
 		log.Println("Failed to get self path:", err)
 	} else {
 		tokenPath = filepath.Join(filepath.Dir(self), "xxqg.token")
 	}
-	rand.Seed(time.Now().UnixNano())
-}
-
-func main() {
-	defer func() {
-		fmt.Println("Press enter key to exit . . .")
-		fmt.Scanln()
-	}()
-
 	iniflags.SetConfigFile(tokenPath)
 	iniflags.SetAllowMissingConfigFile(true)
 	iniflags.SetAllowUnknownFlags(true)
 	iniflags.Parse()
 
-	c, err := login()
+	chrome, err := login()
 	if err != nil {
 		log.Println("登录失败:", err)
 		return
 	}
-	defer c.Close()
+	defer chrome.Close()
 
-	res, err := getPoints(c)
-	if err != nil {
-		log.Println("获取学习积分失败:", err)
-		if !*force {
-			return
-		}
+	res, err := getPoints(chrome, true)
+	if err != nil && !*force {
+		return
 	}
-	log.Print(res)
-	t := res.CreateTask()
-	if t == emptyTask {
+
+	task, status := res.CreateTask()
+	if task == emptyTask {
 		log.Print("学习积分已达上限！")
 		return
+	}
+	defer status.Done()
+
+	if task.article > 0 || task.video > 0 {
+		chrome := newChrome(false, false)
+		defer chrome.Close()
+		go getItems(chrome, status)
 	}
 
 	start := time.Now()
 
+	task.exam(chrome)
+	res, err = task.study(chrome, status)
 	dividingLine()
-	for t.practice {
-		checkError("每日答题", exam(c, practiceURL, ""))
-		dividingLine()
-
-		res, err = getPoints(c)
-		if err != nil {
-			log.Println("获取学习积分失败:", err)
-			break
-		}
-		t = res.CreateTask()
-	}
-	if t.weekly {
-		checkError("每周答题", exam(c, weeklyURL, weeklyClass))
-		dividingLine()
-	}
-	if t.paper {
-		checkError("专项答题", exam(c, paperURL, paperClass))
-		dividingLine()
-	}
-	if t.article > 0 {
-		checkError("选读文章", article(c, t.article))
-		dividingLine()
-	}
-	if t.video > 0 {
-		checkError("视听学习", video(c, t.video))
-		dividingLine()
-	}
-
 	log.Printf("学习完成！总耗时：%s", time.Since(start))
-
-	time.Sleep(time.Second)
-
-	res, err = getPoints(c)
-	if err != nil {
-		log.Println("获取学习积分失败:", err)
-	} else {
+	if err == nil {
+		if res == nil {
+			if res, err = getPoints(chrome, false); err != nil {
+				log.Print(err)
+				return
+			}
+		}
 		log.Print(res)
 	}
-}
-
-func checkError(task string, err error) {
-	if err != nil {
-		if err == context.DeadlineExceeded {
-			log.Printf("%s: 任务超时", task)
-		} else {
-			log.Printf("%s: %s", task, err)
-		}
-	}
-}
-
-func dividingLine() {
-	io.WriteString(log.Default().Writer(), strings.Repeat("=", 100)+"\r\n")
 }
