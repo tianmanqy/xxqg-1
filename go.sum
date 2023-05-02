@@ -35,8 +35,8 @@ github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJy
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/sunshineplan/chrome v1.1.1 h1:yG6w8AlB6VtStcWzJjWIbym1Z3lzf+PTfnIZYV2V4Kc=
 github.com/sunshineplan/chrome v1.1.1/go.mod h1:UO/GP6CVlv20b2IZRE9qldq38/JQ4k6ZE5FWpahH1ho=
-github.com/sunshineplan/gohttp v1.0.5 h1:wScgs9Bl0a8rafLXPeNnNsMTG3qn5LNWkoWvkKvaP4s=
-github.com/sunshineplan/gohttp v1.0.5/go.mod h1:zSxRKlkbXY/5yRDQsrV3dXGCQBZNp1t4QqC5LHkg3bg=
+github.com/sunshineplan/gohttp v1.0.6 h1:8Q4nPexZcBlES3Ee7z4kACV2RvS+SqN74L+FJAH8vPg=
+github.com/sunshineplan/gohttp v1.0.6/go.mod h1:aTmCdd7sOiBHDyFVDW9pTvX5ecRUOFym4zGN9DhwM18=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de h1:fkw+7JkxF3U1GzQoX9h69Wvtvxajo5Rbzy6+YMMzPIg=
 github.com/vharitonsky/iniflags v0.0.0-20180513140207-a33cd0b5f3de/go.mod h1:irMhzlTz8+fVFj6CH2AN2i+WI5S6wWFtK3MBCIxIpyI=
 golang.org/x/exp v0.0.0-20230321023759-10a507213a29 h1:ooxPy7fPvB4kwsA2h+iBNHkAbp/4JxTSwCmvdjEYmug=
@@ -47,6 +47,8 @@ golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.7.0 h1:3jlCCIQZPdOYu1h8BkNvLz8Kgwtae2cagcG/VamtZRU=
 golang.org/x/sys v0.7.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/text v0.9.0 h1:2sjJmO8cDvYveuX97RDLsxlyUxLl+GHoLxBiRdHllBE=
+golang.org/x/text v0.9.0/go.mod h1:e1OnstbJyHTd6l/uOt8jFFHp6TRDWZR/bV3emEE/zU8=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
